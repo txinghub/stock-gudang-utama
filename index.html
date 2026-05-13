@@ -1950,12 +1950,18 @@ function closeSettingsModal() { document.getElementById('settingsModal').classLi
 
 function addSetting() {
   const input = document.getElementById('newSettingValue');
-  const val = input.value.trim().toUpperCase();
+  // Preserve case for CUSTOMER and SATUAN, uppercase for others
+  const preserveCaseTypes = ['customer', 'satuan'];
+  const val = preserveCaseTypes.includes(currentSettingType)
+    ? input.value.trim()
+    : input.value.trim().toUpperCase();
   if (!val) return;
   if (!settings[currentSettingType]) settings[currentSettingType] = [];
-  if (settings[currentSettingType].includes(val)) { showToast('Data sudah ada!', 'error'); return; }
+  // Case-insensitive duplicate check
+  const dup = settings[currentSettingType].some(v => v.toUpperCase() === val.toUpperCase());
+  if (dup) { showToast('Data sudah ada!', 'error'); return; }
   settings[currentSettingType].push(val);
-  settings[currentSettingType].sort();
+  settings[currentSettingType].sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()));
   input.value = '';
   showToast('Data berhasil ditambahkan!', 'success');
   saveSettings();
