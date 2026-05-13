@@ -1979,7 +1979,7 @@ function openDeleteSetting(idx) {
   document.getElementById('deleteMsg').textContent = 'Yakin hapus data ini?';
   document.getElementById('deleteItemName').textContent = (settings[currentSettingType]||[])[idx] || '—';
   document.getElementById('deleteModal').classList.add('show');
-  closeSettingsModal();
+  // Don't close settings modal — delete confirmation shows on top
 }
 
 /* ================================================
