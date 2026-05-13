@@ -2061,11 +2061,13 @@ function loadFromDB() {
     stmt.free();
 
     stmt = db.prepare('SELECT * FROM settings');
-    settings = { lokasi:[], kota:[], customer:[], supplier:[], satuan:[] };
+    settings = { lokasi:[], kota:[], customer:[], supplier:[], satuan:[], kategori:[] };
     while (stmt.step()) {
       const r = stmt.getAsObject();
       if (!settings[r.type]) settings[r.type] = [];
-      if (!settings[r.type].includes(r.value)) settings[r.type].push(r.value);
+      // Normalize to uppercase on load to match addSetting behavior
+      const upperVal = (r.value||'').toUpperCase();
+      if (!settings[r.type].includes(upperVal)) settings[r.type].push(upperVal);
     }
     stmt.free();
 
