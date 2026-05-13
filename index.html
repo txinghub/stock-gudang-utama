@@ -1921,7 +1921,9 @@ function confirmDelete() {
     settings[currentSettingType].splice(deleteTarget, 1);
     showToast('Data berhasil dihapus!', 'success');
     saveSettings();
-    renderSettingsList();
+    closeDeleteModal();
+    renderSettingsList(); // render AFTER modal closes so DOM updates visibly
+    return;
   }
   closeDeleteModal();
 }
