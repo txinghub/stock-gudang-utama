@@ -1954,8 +1954,8 @@ function addSetting() {
   const val = input.value.trim().toUpperCase();
   if (!val) return;
   if (!settings[currentSettingType]) settings[currentSettingType] = [];
-  // Case-insensitive duplicate check
-  const dup = settings[currentSettingType].some(v => v.toUpperCase() === val.toUpperCase());
+  // Case-insensitive duplicate check against current settings array
+  const dup = settings[currentSettingType].some(v => v.toUpperCase() === val);
   if (dup) { showToast('Data sudah ada!', 'error'); return; }
   settings[currentSettingType].push(val);
   settings[currentSettingType].sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()));
@@ -1964,6 +1964,25 @@ function addSetting() {
   saveSettings();
   renderSettingsList();
   populateDropdowns(); // refresh datalist in item form
+  // Sync localStorage settings array to match DB behavior (uppercase only)
+  syncSettingsUppercase();
+}
+
+function syncSettingsUppercase() {
+  // Ensure all settings values are uppercase (fix any legacy lowercase entries)
+  ['lokasi','kota','supplier','satuan','customer','kategori'].forEach(type => {
+    if (settings[type]) {
+      settings[type] = settings[type].map(v => v.toUpperCase());
+      // Remove duplicates case-insensitively
+      const seen = new Set();
+      settings[type] = settings[type].filter(v => {
+        const upper = v.toUpperCase();
+        if (seen.has(upper)) return false;
+        seen.add(upper);
+        return true;
+      });
+    }
+  });
 }
 
 document.getElementById('newSettingValue').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addSetting(); } });
