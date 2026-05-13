@@ -355,8 +355,8 @@ body {
 
 .user-table th {
   text-align: left;
-  padding: 14px 20px;
-  font-size: 10px;
+  padding: 8px 14px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--text-muted);
@@ -366,8 +366,8 @@ body {
 }
 
 .user-table td {
-  padding: 14px 20px;
-  font-size: 12px;
+  padding: 8px 14px;
+  font-size: 11px;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
   letter-spacing: 0.5px;
@@ -381,11 +381,12 @@ body {
 .user-table .role-admin { background: var(--danger-dim); color: var(--danger); }
 .user-table .role-manager { background: var(--info-dim); color: var(--info); }
 .user-table .role-user { background: var(--success-dim); color: var(--success); }
-.user-table .actions { display: flex; gap: 6px; }
+.user-table .actions { display: flex; gap: 4px; }
+.user-table .actions .btn { padding: 4px 8px; font-size: 10px; }
 
 /* PERMISSION MATRIX */
 .permissions-section {
-  padding: 24px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -407,8 +408,8 @@ body {
 
 .permissions-table th {
   text-align: center;
-  padding: 10px 16px;
-  font-size: 10px;
+  padding: 6px 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 1.5px;
   color: var(--text-muted);
@@ -417,15 +418,15 @@ body {
 }
 
 .permissions-table th:first-child { text-align: left; }
-.permissions-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.permissions-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .permissions-table tr:last-child td { border-bottom: none; }
-.permissions-table .perm-label { font-size: 12px; color: var(--text-secondary); letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
-.permissions-table .perm-icon { font-size: 14px; }
-.permissions-table td.check { text-align: center; }
+.permissions-table .perm-label { font-size: 11px; color: var(--text-secondary); letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+.permissions-table .perm-icon { font-size: 12px; }
+.permissions-table td.check { text-align: center; padding: 4px 8px; }
 
 .permissions-table input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   accent-color: var(--accent);
   cursor: pointer;
 }
@@ -731,12 +732,12 @@ body {
 
   <!-- ===== MAIN CONTENT: USER MANAGEMENT ===== -->
   <div id="pageUser" class="main page-user">
-    <div class="page-header">
-      <div class="page-title">👥 USER MANAGEMENT</div>
-      <button class="btn btn-primary" onclick="openAddUser()">＋ TAMBAH USER</button>
+    <div class="page-header" style="padding:10px 16px">
+      <div class="page-title" style="font-size:13px">👥 USER MANAGEMENT</div>
+      <button class="btn btn-primary" style="font-size:10px;padding:6px 14px" onclick="openAddUser()">＋ TAMBAH USER</button>
     </div>
 
-    <div class="page-content">
+    <div class="page-content" style="padding:8px 16px">
       <table class="user-table">
         <thead>
           <tr>
@@ -753,12 +754,12 @@ body {
 
     <!-- PERMISSION MATRIX -->
     <div style="margin-top:24px">
-      <div class="page-header">
-        <div class="page-title" style="font-size:13px">🔐 PERMISSION MATRIX</div>
-        <button class="btn btn-info btn-sm" onclick="savePermissions()" id="btnSavePerm">💾 SIMPAN PERMISSION</button>
+      <div class="page-header" style="padding:10px 16px">
+        <div class="page-title" style="font-size:11px">🔐 PERMISSION MATRIX</div>
+        <button class="btn btn-info btn-sm" style="font-size:10px;padding:6px 12px" onclick="savePermissions()" id="btnSavePerm">💾 SIMPAN</button>
       </div>
 
-      <div class="page-content" style="padding:24px">
+      <div class="page-content" style="padding:12px 16px">
         <div class="permissions-section">
           <div class="permissions-title">📋 MASTER DATA ACCESS</div>
           <table class="permissions-table">
