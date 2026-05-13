@@ -1920,9 +1920,9 @@ function confirmDelete() {
   } else if (deleteType === 'setting' && deleteTarget !== null) {
     settings[currentSettingType].splice(deleteTarget, 1);
     showToast('Data berhasil dihapus!', 'success');
-    saveSettings();
+    // Skip saveSettings to test — just re-render
     closeDeleteModal();
-    console.log('DEBUG setting delete:', currentSettingType, 'after splice:', settings[currentSettingType]);
+    console.log('DEBUG setting delete:', currentSettingType, 'after splice:', JSON.stringify(settings[currentSettingType]));
     renderSettingsList();
     console.log('DEBUG renderSettingsList done, list innerHTML:', document.getElementById('settingsList').innerHTML.substring(0, 200));
     return;
