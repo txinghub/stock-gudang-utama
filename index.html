@@ -1117,11 +1117,12 @@ let currentUser = null;  // {id, username, role}
 // ---- PERMISSION DEFINITIONS ----
 const PERMISSIONS = {
   master: [
-    { key: 'lokasi',    label: '📍 Lokasi',    icon: '📍' },
-    { key: 'kota',      label: '🏙 Kota',       icon: '🏙' },
-    { key: 'customer',  label: '👤 Customer',   icon: '👤' },
-    { key: 'supplier',  label: '🏭 Supplier',   icon: '🏭' },
-    { key: 'satuan',    label: '📦 Satuan',     icon: '📦' },
+    { key: 'lokasi',    label: '📍 Lokasi',     icon: '📍' },
+    { key: 'kota',      label: '🏙 Kota',        icon: '🏙' },
+    { key: 'customer',  label: '👤 Customer',    icon: '👤' },
+    { key: 'supplier',  label: '🏭 Supplier',    icon: '🏭' },
+    { key: 'satuan',    label: '📦 Satuan',      icon: '📦' },
+    { key: 'kategori',  label: '🏷️ Category',   icon: '🏷️' },
   ],
   item: [
     { key: 'item_view',   label: '👁 Lihat Item',       icon: '👁' },
@@ -1140,17 +1141,17 @@ const PERMISSIONS = {
 // DEFAULT PERMISSIONS
 const DEFAULT_PERMS = {
   admin: {
-    lokasi:true, kota:true, customer:true, supplier:true, satuan:true,
+    lokasi:true, kota:true, customer:true, supplier:true, satuan:true, kategori:true,
     item_view:true, item_add:true, item_edit:true, item_delete:true,
     db_new:true, db_save:true, db_open:true, user_mgmt:true
   },
   manager: {
-    lokasi:true, kota:true, customer:true, supplier:true, satuan:true,
+    lokasi:true, kota:true, customer:true, supplier:true, satuan:true, kategori:true,
     item_view:true, item_add:true, item_edit:true, item_delete:false,
     db_new:false, db_save:false, db_open:false, user_mgmt:false
   },
   user: {
-    lokasi:false, kota:false, customer:false, supplier:false, satuan:false,
+    lokasi:false, kota:false, customer:false, supplier:false, satuan:false, kategori:false,
     item_view:true, item_add:true, item_edit:true, item_delete:false,
     db_new:false, db_save:false, db_open:false, user_mgmt:false
   }
@@ -1935,7 +1936,7 @@ function confirmDelete() {
 function openSettings(type) {
   if (!can(type)) { showToast('Akses ditolak — tidak punya izin', 'error'); return; }
   currentSettingType = type;
-  const titles = { lokasi:'📍 LOKASI', kota:'🏙 KOTA', customer:'👤 CUSTOMER', supplier:'🏭 SUPPLIER', satuan:'📦 SATUAN' };
+  const titles = { lokasi:'📍 LOKASI', kota:'🏙 KOTA', customer:'👤 CUSTOMER', supplier:'🏭 SUPPLIER', satuan:'📦 SATUAN', kategori:'🏷️ CATEGORY' };
   document.getElementById('settingsTitle').textContent = titles[type] || type.toUpperCase();
   document.getElementById('newSettingValue').value = '';
   renderSettingsList();
