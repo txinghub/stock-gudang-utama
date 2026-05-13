@@ -1922,7 +1922,9 @@ function confirmDelete() {
     showToast('Data berhasil dihapus!', 'success');
     saveSettings();
     closeDeleteModal();
-    renderSettingsList(); // render AFTER modal closes so DOM updates visibly
+    console.log('DEBUG setting delete:', currentSettingType, 'after splice:', settings[currentSettingType]);
+    renderSettingsList();
+    console.log('DEBUG renderSettingsList done, list innerHTML:', document.getElementById('settingsList').innerHTML.substring(0, 200));
     return;
   }
   closeDeleteModal();
