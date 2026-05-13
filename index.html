@@ -1909,6 +1909,7 @@ function confirmDelete() {
     items = items.filter(i => i.id !== deleteTarget);
     showToast('Item berhasil dihapus!', 'success');
     saveToDB();
+    closeDetailModal(); // Close detail modal first
     renderCards();
     updateStats();
   } else if (deleteType === 'user' && deleteTarget) {
