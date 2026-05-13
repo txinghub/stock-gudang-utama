@@ -1938,7 +1938,7 @@ function confirmDelete() {
 function openSettings(type) {
   if (!can(type)) { showToast('Akses ditolak — tidak punya izin', 'error'); return; }
   currentSettingType = type;
-  const titles = { lokasi:'📍 LOKASI', kota:'🏙 KOTA', customer:'👤 CUSTOMER', supplier:'🏭 SUPPLIER', satuan:'📦 SATUAN', kategori:'🏷️ CATEGORY' };
+  const titles = { lokasi:'📍 LOKASI GUDANG', kota:'🏙 KOTA', customer:'👤 CUSTOMER', supplier:'🏭 SUPPLIER', satuan:'📦 SATUAN', kategori:'🏷️ CATEGORY' };
   document.getElementById('settingsTitle').textContent = titles[type] || type.toUpperCase();
   document.getElementById('newSettingValue').value = '';
   renderSettingsList();
