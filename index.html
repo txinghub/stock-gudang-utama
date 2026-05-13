@@ -264,6 +264,8 @@ body {
 .tab:hover { color: var(--text-secondary); }
 .tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
 .tab.disabled { opacity: 0.4; pointer-events: none; }
+.tab span { font-size:13px; opacity:0.8; margin-left:4px; font-weight:700; }
+.tab.active span { opacity:1; }
 
 /* ===== MAIN ===== */
 .main { padding: 24px 32px 40px; }
@@ -738,8 +740,8 @@ body {
     </div>
   </nav>
 
-  <!-- STATS BAR -->
-  <div class="stats-bar">
+  <!-- STATS BAR (hidden - use tabs instead) -->
+  <div class="stats-bar" style="display:none">
     <div class="stat-item" id="statAll" onclick="filterStat('all', this)">
       <span>TOTAL</span>
       <span class="stat-value" id="statTotal">0</span>
@@ -764,10 +766,10 @@ body {
 
   <!-- TABS -->
   <div class="tabs" id="mainTabs">
-    <button class="tab active" data-filter="all" onclick="switchTab(this)">SEMUA</button>
-    <button class="tab" data-filter="aman" onclick="switchTab(this)">🟢 NORMAL</button>
-    <button class="tab" data-filter="hampir" onclick="switchTab(this)">🟡 HIGH</button>
-    <button class="tab" data-filter="kritis" onclick="switchTab(this)">🔴 LOW</button>
+    <button class="tab active" data-filter="all" onclick="switchTab(this)">SEMUA <span id="tabAllCount">0</span></button>
+    <button class="tab" data-filter="aman" onclick="switchTab(this)">🟢 NORMAL <span id="tabNormalCount">0</span></button>
+    <button class="tab" data-filter="hampir" onclick="switchTab(this)">🟡 HIGH <span id="tabHighCount">0</span></button>
+    <button class="tab" data-filter="kritis" onclick="switchTab(this)">🔴 LOW <span id="tabLowCount">0</span></button>
   </div>
 
   <!-- ===== MAIN CONTENT: ITEMS ===== -->
@@ -778,6 +780,9 @@ body {
           <span class="search-icon">🔍</span>
           <input type="text" class="search-input" id="searchInput" placeholder="CARI ITEM..." oninput="handleSearch(this.value)">
         </div>
+        <select class="form-select" id="filterKat" onchange="handleKatFilter(this.value)" style="font-size:12px;padding:8px 10px;max-width:120px">
+          <option value="">SEMUA KAT</option>
+        </select>
       </div>
       <button class="btn btn-primary" onclick="openAddItem()" id="btnAddItem">＋ TAMBAH ITEM</button>
     </div>
@@ -897,8 +902,9 @@ body {
           <datalist id="satuanDatalist"></datalist>
         </div>
         <div class="form-group">
-          <label class="form-label">CUSTOMER</label>
-          <select class="form-select" id="fCustomer"><option value="">— Pilih —</option></select>
+          <label class="form-label">KATEGORI</label>
+          <input type="text" class="form-input" id="fKategori" list="kategoriDatalist" placeholder="Ketik atau pilih..." autocomplete="off">
+          <datalist id="kategoriDatalist"></datalist>
         </div>
       </div>
       <div class="form-group">
@@ -1097,11 +1103,11 @@ body {
 // ---- STATE ----
 let db = null, SQL = null;
 let items = [];
-let settings = { lokasi:[], kota:[], customer:[], supplier:[], satuan:[] };
+let settings = { lokasi:[], kota:[], customer:[], supplier:[], satuan:[], kategori:[] };
 let users = [];          // {id, username, password, role, created, lastLogin}
 let movements = [];       // {id, item_id, item_nama, kode, type:'MASUK'|'KELUAR', jumlah, satuan, tanggal, catatan}
 let permissions = {};    // {role: {menu: bool}}
-let currentFilter = 'all', currentSearch = '', currentPage = 'items';
+let currentFilter = 'all', currentSearch = '', currentPage = 'items', currentSort = 'asc', currentKatFilter = '';
 let editingItemId = null, editingUserId = null;
 let deleteTarget = null, deleteType = null;
 let currentSettingType = '';
@@ -1587,6 +1593,15 @@ function updateStats() {
   document.getElementById('statAmanVal').textContent = aman;
   document.getElementById('statHampirVal').textContent = hampir;
   document.getElementById('statKritisVal').textContent = kritis;
+  // Update tab counts
+  const elAll = document.getElementById('tabAllCount');
+  const elNormal = document.getElementById('tabNormalCount');
+  const elHigh = document.getElementById('tabHighCount');
+  const elLow = document.getElementById('tabLowCount');
+  if (elAll) elAll.textContent = all;
+  if (elNormal) elNormal.textContent = aman;
+  if (elHigh) elHigh.textContent = hampir;
+  if (elLow) elLow.textContent = kritis;
 }
 
 function switchTab(el, filter, fromStat = false) {
@@ -1600,6 +1615,27 @@ function switchTab(el, filter, fromStat = false) {
 function handleSearch(val) {
   currentSearch = val.toUpperCase();
   renderCards();
+}
+
+function toggleSort() {
+  currentSort = currentSort === 'asc' ? 'desc' : 'asc';
+  const btn = document.getElementById('btnSort');
+  btn.textContent = currentSort === 'asc' ? '↕ A→Z' : '↕ Z→A';
+  renderCards();
+}
+
+function handleKatFilter(val) {
+  currentKatFilter = val.toUpperCase();
+  renderCards();
+}
+
+function populateKatFilter() {
+  const sel = document.getElementById('filterKat');
+  if (!sel) return;
+  const uniqueKats = [...new Set(items.map(i => i.kategori).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">SEMUA KAT</option>';
+  uniqueKats.forEach(k => { sel.innerHTML += `<option value="${k}">${k}</option>`; });
+  sel.value = currentKatFilter;
 }
 
 /* ================================================
@@ -1650,9 +1686,20 @@ function renderCards() {
     filtered = filtered.filter(i =>
       (i.nama||'').includes(currentSearch) || (i.kode||'').includes(currentSearch) ||
       (i.lokasi||'').includes(currentSearch) || (i.supplier||'').includes(currentSearch) ||
-      (i.kota||'').includes(currentSearch)
+      (i.kota||'').includes(currentSearch) || (i.kategori||'').includes(currentSearch)
     );
   }
+
+  if (currentKatFilter) {
+    filtered = filtered.filter(i => (i.kategori||'').toUpperCase() === currentKatFilter);
+  }
+
+  // Sort by nama A→Z or Z→A
+  filtered.sort((a, b) => {
+    const nameA = (a.nama||'').toUpperCase();
+    const nameB = (b.nama||'').toUpperCase();
+    return currentSort === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+  });
 
   if (filtered.length === 0) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
@@ -1670,12 +1717,14 @@ function renderCards() {
       <div class="card-header">
         <div class="card-title">${item.nama||'—'}</div>
         <span class="card-badge ${status}">${getStatusLabel(status)}</span>
+        ${item.kategori ? `<span class="card-badge" style="background:var(--accent);color:#fff;font-size:9px">${item.kategori}</span>` : ''}
       </div>
       <div class="card-kode">${item.kode||'NO CODE'}</div>
       <div class="card-stok-bar"><div class="card-stok-fill ${status}" style="width:${pct}%"></div></div>
       <div class="card-info">
         <div class="card-row"><span class="card-row-label">STOK</span><span class="card-row-value">${item.stok||0} ${item.satuan||''}</span></div>
         <div class="card-row"><span class="card-row-label">NORMAL</span><span class="card-row-value">${item.min_stok||10} ${item.satuan||''}</span></div>
+        <div class="card-row"><span class="card-row-label">KAT</span><span class="card-row-value">${item.kategori||'—'}</span></div>
         <div class="card-row"><span class="card-row-label">LOKASI</span><span class="card-row-value">${item.lokasi||'—'}</span></div>
         <div class="card-row"><span class="card-row-label">SUPPLIER</span><span class="card-row-value">${item.supplier||'—'}</span></div>
       </div>
@@ -1683,6 +1732,7 @@ function renderCards() {
   }).join('') + `<div class="card-add" onclick="openAddItem()">
     <div class="card-add-icon">＋</div><div class="card-add-text">TAMBAH ITEM</div>
   </div>`;
+  populateKatFilter();
 }
 
 /* ================================================
@@ -1698,6 +1748,7 @@ function openAddItem() {
   document.getElementById('fMinStok').value = '10';
   document.getElementById('fHighStok').value = '';
   document.getElementById('fLowStok').value = '';
+  document.getElementById('fKategori').value = '';
   populateDropdowns();
   document.getElementById('itemModal').classList.add('show');
 }
@@ -1710,7 +1761,7 @@ function openEditItem(id) {
   const item = items.find(i => i.id === id);
   if (!item) return;
   document.getElementById('modalTitle').textContent = '✏️ EDIT ITEM';
-  ['Nama','Kode','Lokasi','Kota','Supplier','Stok','Satuan','MinStok','HighStok','LowStok','Customer','Catatan'].forEach(f => {
+  ['Nama','Kode','Lokasi','Kota','Supplier','Stok','Satuan','MinStok','HighStok','LowStok','Customer','Catatan','Kategori'].forEach(f => {
     const el = document.getElementById('f'+f);
     if (el) el.value = item[f.charAt(0).toLowerCase() + f.slice(1)] || '';
   });
@@ -1733,8 +1784,8 @@ function saveItem(e) {
     min_stok: parseInt(document.getElementById('fMinStok').value) || 10,
     high_stok: document.getElementById('fHighStok').value ? parseInt(document.getElementById('fHighStok').value) : null,
     low_stok: document.getElementById('fLowStok').value ? parseInt(document.getElementById('fLowStok').value) : null,
-    customer: document.getElementById('fCustomer').value,
     catatan: document.getElementById('fCatatan').value.trim(),
+    kategori: document.getElementById('fKategori').value.trim(),
   };
   if (!data.nama) { showToast('NAMA ITEM wajib diisi!', 'error'); return; }
   if (!data.lokasi) { showToast('LOKASI wajib diisi!', 'error'); return; }
@@ -1745,6 +1796,14 @@ function saveItem(e) {
   if (sat && !settings.satuan.includes(sat)) {
     settings.satuan.push(sat);
     settings.satuan.sort();
+    saveSettings();
+  }
+  // Auto-add new kategori to settings if not exists
+  if (!settings.kategori) settings.kategori = [];
+  const kat = data.kategori.trim().toUpperCase();
+  if (kat && !settings.kategori.includes(kat)) {
+    settings.kategori.push(kat);
+    settings.kategori.sort();
     saveSettings();
   }
 
@@ -1764,12 +1823,12 @@ function saveItem(e) {
 }
 
 function populateDropdowns() {
-  ['lokasi','kota','supplier','satuan','customer'].forEach(type => {
+  ['lokasi','kota','supplier','satuan','customer','kategori'].forEach(type => {
     const sel = document.getElementById('f' + type.charAt(0).toUpperCase() + type.slice(1));
     if (!sel) return;
-    // SATUAN uses datalist (text input) — skip select population
-    if (type === 'satuan') {
-      const dl = document.getElementById('satuanDatalist');
+    // SATUAN and KATEGORI use datalist (text input) — skip select population
+    if (type === 'satuan' || type === 'kategori') {
+      const dl = document.getElementById(type + 'Datalist');
       if (dl) {
         dl.innerHTML = '';
         (settings[type]||[]).forEach(v => { dl.innerHTML += `<option value="${v}">`; });
@@ -1806,6 +1865,7 @@ function openDetail(id) {
     <div class="detail-grid">
       <div class="detail-item"><div class="detail-label">KODE</div><div class="detail-value">${item.kode||'—'}</div></div>
       <div class="detail-item"><div class="detail-label">SATUAN</div><div class="detail-value">${item.satuan||'—'}</div></div>
+      <div class="detail-item"><div class="detail-label">KATEGORI</div><div class="detail-value">${item.kategori||'—'}</div></div>
       <div class="detail-item"><div class="detail-label">LOKASI</div><div class="detail-value">${item.lokasi||'—'}</div></div>
       <div class="detail-item"><div class="detail-label">KOTA</div><div class="detail-value">${item.kota||'—'}</div></div>
       <div class="detail-item"><div class="detail-label">SUPPLIER</div><div class="detail-value">${item.supplier||'—'}</div></div>
@@ -1928,7 +1988,7 @@ function openDeleteSetting(idx) {
 function saveToDB() {
   if (!db) {
     db = new SQL.Database();
-    db.run(`CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY, nama TEXT, kode TEXT, lokasi TEXT, kota TEXT, supplier TEXT, satuan TEXT, stok INTEGER DEFAULT 0, min_stok INTEGER DEFAULT 10, high_stok INTEGER, low_stok INTEGER, customer TEXT, catatan TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY, nama TEXT, kode TEXT, lokasi TEXT, kota TEXT, supplier TEXT, satuan TEXT, stok INTEGER DEFAULT 0, min_stok INTEGER DEFAULT 10, high_stok INTEGER, low_stok INTEGER, customer TEXT, catatan TEXT, kategori TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS settings (type TEXT, value TEXT, UNIQUE(type, value))`);
     db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, role TEXT, created TEXT, lastLogin TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS permissions (role TEXT, perm TEXT, value INTEGER)`);
@@ -1937,10 +1997,10 @@ function saveToDB() {
 
   db.run('DELETE FROM items');
   items.forEach(item => {
-    db.run(`INSERT INTO items VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    db.run(`INSERT INTO items VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [item.id, item.nama||'', item.kode||'', item.lokasi||'', item.kota||'',
        item.supplier||'', item.satuan||'', item.stok||0, item.min_stok||10,
-       item.high_stok||null, item.low_stok||null, item.customer||'', item.catatan||'']);
+       item.high_stok||null, item.low_stok||null, item.customer||'', item.catatan||'', item.kategori||'']);
   });
 
   db.run('DELETE FROM users');
