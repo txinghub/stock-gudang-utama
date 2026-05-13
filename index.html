@@ -690,6 +690,10 @@ body {
           <div class="settings-item" onclick="openSettings('customer')"><span class="icon">👤</span> CUSTOMER</div>
           <div class="settings-item" onclick="openSettings('supplier')"><span class="icon">🏭</span> SUPPLIER</div>
           <div class="settings-item" onclick="openSettings('satuan')"><span class="icon">📦</span> SATUAN</div>
+          <div class="settings-header" id="settingsLapHeader" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--border)">LAPORAN</div>
+          <div class="settings-item" onclick="openReport('masuk')"><span class="icon">📥</span> Barang Masuk</div>
+          <div class="settings-item" onclick="openReport('keluar')"><span class="icon">📤</span> Barang Keluar</div>
+          <div class="settings-item" onclick="openReport('gabungan')"><span class="icon">📋</span> Laporan Gabungan</div>
           <div class="settings-header" id="settingsUserHeader" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--border)">USER MANAGEMENT</div>
           <div class="settings-item" onclick="openPage('user')" id="settingsUserBtn"><span class="icon">👥</span> USER MANAGEMENT</div>
           <div class="settings-header" id="settingsFileHeader" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--border)">FILE MANAGEMENT</div>
@@ -979,6 +983,62 @@ body {
   </div>
 </div>
 
+<!-- REPORT MODAL -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <div class="modal-title" id="reportTitle">📋 LAPORAN</div>
+      <button class="modal-close" onclick="closeReport()">×</button>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+      <div class="form-group" style="margin:0;flex:1;min-width:140px">
+        <label class="form-label">TANGGAL</label>
+        <input type="date" class="form-input" id="reportDate" onchange="renderReport()">
+      </div>
+      <div class="form-group" style="margin:0;flex:1;min-width:140px">
+        <label class="form-label">SAMPAI</label>
+        <input type="date" class="form-input" id="reportDateEnd" onchange="renderReport()">
+      </div>
+      <div style="display:flex;gap:6px;margin-top:14px">
+        <button class="btn btn-ghost btn-sm" onclick="exportReport('csv')" title="Export CSV">📄 CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportReport('pdf')" title="Export PDF">📕 PDF</button>
+      </div>
+    </div>
+    <div id="reportSummary" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap"></div>
+    <div id="reportContent" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"></div>
+  </div>
+</div>
+
+<!-- MOVEMENT MODAL (MASUK/KELUAR) -->
+<div class="modal-overlay" id="moveModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title" id="moveTitle">📥 MASUK</div>
+      <button class="modal-close" onclick="closeMoveModal()">×</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ITEM</label>
+      <div id="moveItemName" style="padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;color:var(--accent);letter-spacing:1px"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">STOK SAAT INI</label>
+      <div id="moveCurrentStok" style="padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:20px;font-weight:800;text-align:center;color:var(--text)"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">JUMLAH *</label>
+      <input type="number" class="form-input" id="moveJumlah" min="1" placeholder="Ketik jumlah..." required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">CATATAN</label>
+      <textarea class="form-textarea" id="moveCatatan" rows="2" placeholder="Optional..."></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeMoveModal()">BATAL</button>
+      <button class="btn btn-primary" id="btnConfirmMove" onclick="confirmMovement()">✓ KONFIRMASI</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -995,6 +1055,7 @@ let db = null, SQL = null;
 let items = [];
 let settings = { lokasi:[], kota:[], customer:[], supplier:[], satuan:[] };
 let users = [];          // {id, username, password, role, created, lastLogin}
+let movements = [];       // {id, item_id, item_nama, kode, type:'MASUK'|'KELUAR', jumlah, satuan, tanggal, catatan}
 let permissions = {};    // {role: {menu: bool}}
 let currentFilter = 'all', currentSearch = '', currentPage = 'items';
 let editingItemId = null, editingUserId = null;
@@ -1657,8 +1718,10 @@ function openDetail(id) {
     </div>
     ${item.catatan ? `<div class="detail-catatan">📝 ${item.catatan}</div>` : ''}
     <div class="detail-actions">
-      <button class="btn btn-danger" onclick="openDeleteItem(${item.id})" ${!can('item_delete')?'disabled title="Tidak ada izin"':''}>🗑️ HAPUS</button>
+      <button class="btn btn-success" onclick="doMovement(${item.id},'MASUK')" ${!can('item_edit')?'disabled title="Tidak ada izin"':''}>📥 MASUK</button>
+      <button class="btn btn-warning" onclick="doMovement(${item.id},'KELUAR')" ${!can('item_edit')?'disabled title="Tidak ada izin"':''}>📤 KELUAR</button>
       <button class="btn btn-primary" onclick="openEditItem(${item.id})" ${!can('item_edit')?'disabled title="Tidak ada izin"':''}>✏️ EDIT</button>
+      <button class="btn btn-danger" onclick="openDeleteItem(${item.id})" ${!can('item_delete')?'disabled title="Tidak ada izin"':''}>🗑️</button>
     </div>
   `;
   document.getElementById('detailModal').classList.add('show');
@@ -1772,6 +1835,7 @@ function saveToDB() {
     db.run(`CREATE TABLE IF NOT EXISTS settings (type TEXT, value TEXT, UNIQUE(type, value))`);
     db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, role TEXT, created TEXT, lastLogin TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS permissions (role TEXT, perm TEXT, value INTEGER)`);
+    db.run(`CREATE TABLE IF NOT EXISTS movements (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, item_nama TEXT, kode TEXT, type TEXT, jumlah INTEGER, satuan TEXT, tanggal TEXT, catatan TEXT)`);
   }
 
   db.run('DELETE FROM items');
@@ -1791,6 +1855,12 @@ function saveToDB() {
     Object.entries(perms).forEach(([perm, val]) => {
       db.run(`INSERT INTO permissions VALUES (?,?,?)`, [role, perm, val ? 1 : 0]);
     });
+  });
+
+  db.run('DELETE FROM movements');
+  movements.forEach(m => {
+    db.run(`INSERT INTO movements (id, item_id, item_nama, kode, type, jumlah, satuan, tanggal, catatan) VALUES (?,?,?,?,?,?,?,?,?)`,
+      [m.id||0, m.item_id||0, m.item_nama||'', m.kode||'', m.type||'', m.jumlah||0, m.satuan||'', m.tanggal||'', m.catatan||'']);
   });
 
   Object.entries(settings).forEach(([type, vals]) => {
@@ -1830,6 +1900,13 @@ function loadFromDB() {
       if (!settings[r.type].includes(r.value)) settings[r.type].push(r.value);
     }
     stmt.free();
+
+    try {
+      stmt = db.prepare('SELECT * FROM movements');
+      movements = [];
+      while (stmt.step()) { const r = stmt.getAsObject(); movements.push(r); }
+      stmt.free();
+    } catch(e) { movements = []; }
   } catch(e) { console.warn('Load DB error:', e); }
 }
 
@@ -1864,6 +1941,7 @@ function newDatabase() {
   db.run(`CREATE TABLE IF NOT EXISTS settings (type TEXT, value TEXT, UNIQUE(type, value))`);
   db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, role TEXT, created TEXT, lastLogin TEXT)`);
   db.run(`CREATE TABLE IF NOT EXISTS permissions (role TEXT, perm TEXT, value INTEGER)`);
+  db.run(`CREATE TABLE IF NOT EXISTS movements (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, item_nama TEXT, kode TEXT, type TEXT, jumlah INTEGER, satuan TEXT, tanggal TEXT, catatan TEXT)`);
   items = []; settings = { lokasi:[], kota:[], customer:[], supplier:[], satuan:[] };
   users = [{ id:1, username:'ADMIN', password:'admin123', role:'admin', created:new Date().toISOString(), lastLogin:null },
            { id:2, username:'MANAGER', password:'manager123', role:'manager', created:new Date().toISOString(), lastLogin:null },
@@ -1941,6 +2019,271 @@ document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey||e.metaKey) && e.key === 'n' && currentUser) { e.preventDefault(); openAddItem(); }
   if ((e.ctrlKey||e.metaKey) && e.key === 's' && currentUser) { e.preventDefault(); saveDatabase(); }
 });
+
+/* ================================================
+   MOVEMENT (MASUK/KELUAR)
+   ================================================ */
+let moveItemId = null, moveType = '';
+
+function doMovement(id, type) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  moveItemId = id;
+  moveType = type;
+  document.getElementById('moveTitle').textContent = type === 'MASUK' ? '📥 MASUK' : '📤 KELUAR';
+  document.getElementById('moveItemName').textContent = item.nama;
+  document.getElementById('moveCurrentStok').textContent = `${item.stok||0} ${item.satuan||''}`;
+  document.getElementById('moveJumlah').value = '';
+  document.getElementById('moveCatatan').value = '';
+  const btn = document.getElementById('btnConfirmMove');
+  btn.className = type === 'MASUK' ? 'btn btn-success' : 'btn btn-warning';
+  btn.textContent = type === 'MASUK' ? '✓ KONFIRMASI MASUK' : '✓ KONFIRMASI KELUAR';
+  document.getElementById('detailModal').classList.remove('show');
+  document.getElementById('moveModal').classList.add('show');
+}
+
+function closeMoveModal() {
+  document.getElementById('moveModal').classList.remove('show');
+}
+
+function confirmMovement() {
+  const item = items.find(i => i.id === moveItemId);
+  if (!item) return;
+  const jumlah = parseInt(document.getElementById('moveJumlah').value);
+  const catatan = document.getElementById('moveCatatan').value.trim();
+  if (!jumlah || jumlah <= 0) { showToast('Jumlah harus lebih dari 0', 'error'); return; }
+
+  if (moveType === 'MASUK') {
+    item.stok = (item.stok || 0) + jumlah;
+    showToast(`+${jumlah} ${item.satuan} ${item.nama} — MASUK`, 'success');
+  } else {
+    if ((item.stok || 0) < jumlah) { showToast('Stok tidak cukup!', 'error'); return; }
+    item.stok = (item.stok || 0) - jumlah;
+    showToast(`-${jumlah} ${item.satuan} ${item.nama} — KELUAR`, 'success');
+  }
+
+  addMovement(item, moveType, jumlah, catatan);
+  closeMoveModal();
+  saveToDB();
+  renderCards();
+  updateStats();
+}
+
+/* ================================================
+   REPORTS
+   ================================================ */
+let currentReportType = 'masuk';
+let currentReportData = { masuk: [], keluar: [] };
+
+function openReport(type) {
+  currentReportType = type;
+  toggleSettings();
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('reportDate').value = today;
+  document.getElementById('reportDateEnd').value = today;
+  const titles = { masuk:'📥 LAPORAN BARANG MASUK', keluar:'📤 LAPORAN BARANG KELUAR', gabungan:'📋 LAPORAN GABUNGAN' };
+  document.getElementById('reportTitle').textContent = titles[type];
+  document.getElementById('reportModal').classList.add('show');
+  renderReport();
+}
+
+function closeReport() {
+  document.getElementById('reportModal').classList.remove('show');
+}
+
+function renderReport() {
+  const dateStart = document.getElementById('reportDate').value;
+  const dateEnd = document.getElementById('reportDateEnd').value;
+  if (!dateStart) return;
+
+  // Filter movements by date range
+  const filtered = movements.filter(m => {
+    if (!m.tanggal) return false;
+    const d = m.tanggal.split(' ')[0];
+    return d >= dateStart && d <= (dateEnd || dateStart);
+  });
+
+  currentReportData.masuk = filtered.filter(m => m.type === 'MASUK');
+  currentReportData.keluar = filtered.filter(m => m.type === 'KELUAR');
+
+  const summary = document.getElementById('reportSummary');
+  if (currentReportType === 'gabungan') {
+    summary.innerHTML = `
+      <div style="flex:1;min-width:120px;background:var(--success-dim);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:9px;letter-spacing:2px;color:var(--success);margin-bottom:4px">MASUK</div>
+        <div style="font-size:22px;font-weight:800;color:var(--success)">${currentReportData.masuk.length}</div>
+        <div style="font-size:10px;color:var(--text-muted)">item</div>
+      </div>
+      <div style="flex:1;min-width:120px;background:var(--danger-dim);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:9px;letter-spacing:2px;color:var(--danger);margin-bottom:4px">KELUAR</div>
+        <div style="font-size:22px;font-weight:800;color:var(--danger)">${currentReportData.keluar.length}</div>
+        <div style="font-size:10px;color:var(--text-muted)">item</div>
+      </div>
+      <div style="flex:1;min-width:120px;background:var(--info-dim);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:9px;letter-spacing:2px;color:var(--info);margin-bottom:4px">SELISIH</div>
+        <div style="font-size:22px;font-weight:800;color:var(--info)">${currentReportData.masuk.length - currentReportData.keluar.length}</div>
+        <div style="font-size:10px;color:var(--text-muted)">item</div>
+      </div>`;
+  } else {
+    const count = currentReportType === 'masuk' ? currentReportData.masuk.length : currentReportData.keluar.length;
+    const color = currentReportType === 'masuk' ? 'var(--success)' : 'var(--danger)';
+    const bg = currentReportType === 'masuk' ? 'var(--success-dim)' : 'var(--danger-dim)';
+    summary.innerHTML = `
+      <div style="flex:1;background:${bg};border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:9px;letter-spacing:2px;color:${color};margin-bottom:4px">${currentReportType === 'masuk' ? 'MASUK' : 'KELUAR'}</div>
+        <div style="font-size:28px;font-weight:800;color:${color}">${count}</div>
+        <div style="font-size:10px;color:var(--text-muted)">item</div>
+      </div>`;
+  }
+
+  const content = document.getElementById('reportContent');
+  let rows = [];
+
+  if (currentReportType === 'masuk' || currentReportType === 'gabungan') {
+    if (currentReportData.masuk.length > 0) {
+      rows.push('<div style="padding:8px 12px;background:var(--success-dim);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--success)">📥 MASUK</span></div>');
+      rows.push(`<table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr style="background:var(--surface-active)">
+          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">TANGGAL</th>
+          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">ITEM</th>
+          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">KODE</th>
+          <th style="padding:6px 10px;text-align:right;font-size:9px;letter-spacing:1px;color:var(--text-muted)">QTY</th>
+          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">CATATAN</th>
+        </tr>`);
+      currentReportData.masuk.forEach(m => {
+        rows.push(`<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 10px;color:var(--text-secondary)">${m.tanggal}</td>
+          <td style="padding:6px 10px;color:var(--text)">${m.item_nama}</td>
+          <td style="padding:6px 10px;color:var(--text-secondary)">${m.kode||'—'}</td>
+          <td style="padding:6px 10px;text-align:right;color:var(--success);font-weight:700">+${m.jumlah} ${m.satuan||''}</td>
+          <td style="padding:6px 10px;color:var(--text-muted);font-size:10px">${m.catatan||''}</td>
+        </tr>`);
+      });
+      rows.push('</table>');
+    } else {
+      rows.push('<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">Tidak ada data masuk</div>');
+    }
+  }
+
+  if (currentReportType === 'keluar' || currentReportType === 'gabungan') {
+    if (currentReportData.keluar.length > 0) {
+      rows.push('<div style="padding:8px 12px;background:var(--danger-dim);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--danger)">📤 KELUAR</span></div>');
+      rows.push(`<table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr style="background:var(--surface-active)">
+          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">TANGGAL</th>
+          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">ITEM</th>
+          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">KODE</th>
+          <th style="padding:6px 10px;text-align:right;font-size:9px;letter-spacing:1px;color:var(--text-muted)">QTY</th>
+          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">CATATAN</th>
+        </tr>`);
+      currentReportData.keluar.forEach(m => {
+        rows.push(`<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 10px;color:var(--text-secondary)">${m.tanggal}</td>
+          <td style="padding:6px 10px;color:var(--text)">${m.item_nama}</td>
+          <td style="padding:6px 10px;color:var(--text-secondary)">${m.kode||'—'}</td>
+          <td style="padding:6px 10px;text-align:right;color:var(--danger);font-weight:700">-${m.jumlah} ${m.satuan||''}</td>
+          <td style="padding:6px 10px;color:var(--text-muted);font-size:10px">${m.catatan||''}</td>
+        </tr>`);
+      });
+      rows.push('</table>');
+    } else {
+      rows.push('<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">Tidak ada data keluar</div>');
+    }
+  }
+
+  content.innerHTML = rows.join('');
+}
+
+function exportReport(fmt) {
+  const dateStart = document.getElementById('reportDate').value;
+  const dateEnd = document.getElementById('reportDateEnd').value;
+  const labelDate = dateEnd && dateEnd !== dateStart ? `${dateStart} sd ${dateEnd}` : dateStart;
+  const titles = { masuk:'Laporan Barang Masuk', keluar:'Laporan Barang Keluar', gabungan:'Laporan Gabungan' };
+  let rows = [], filename = '';
+
+  if (currentReportType === 'masuk' || currentReportType === 'gabungan') {
+    if (currentReportType === 'gabungan') rows.push(['📥 MASUK']);
+    rows.push(['TANGGAL','NAMA ITEM','KODE','JUMLAH','SATUAN','CATATAN']);
+    currentReportData.masuk.forEach(m => {
+      rows.push([m.tanggal, m.item_nama, m.kode||'', '+'+m.jumlah, m.satuan||'', m.catatan||'']);
+    });
+    if (currentReportType === 'gabungan') rows.push([]);
+  }
+
+  if (currentReportType === 'keluar' || currentReportType === 'gabungan') {
+    if (currentReportType === 'gabungan') rows.push(['📤 KELUAR']);
+    rows.push(['TANGGAL','NAMA ITEM','KODE','JUMLAH','SATUAN','CATATAN']);
+    currentReportData.keluar.forEach(m => {
+      rows.push([m.tanggal, m.item_nama, m.kode||'', '-'+m.jumlah, m.satuan||'', m.catatan||'']);
+    });
+  }
+
+  if (fmt === 'csv') {
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${titles[currentReportType]}_${labelDate}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    showToast('CSV berhasil di-export!', 'success');
+  } else if (fmt === 'pdf') {
+    const printWin = window.open('','',`width=700,height=600`);
+    let html = `<html><head><title>${titles[currentReportType]}</title>
+    <style>
+      body{font-family:-apple-system,sans-serif;padding:20px;color:#333}
+      h2{text-align:center;color:#1C1C1C;margin-bottom:4px}
+      .meta{text-align:center;color:#777;font-size:12px;margin-bottom:20px}
+      table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px}
+      th{background:#F5A623;color:#fff;padding:8px 10px;text-align:left}
+      td{padding:7px 10px;border-bottom:1px solid #ddd}
+      .masuk td{color:#43A047}
+      .keluar td{color:#E53935}
+      .section-header{background:#eee;padding:6px 10px;font-weight:700;margin-top:16px}
+    </style></head><body>
+    <h2>${titles[currentReportType]}</h2>
+    <div class="meta">Tanggal: ${labelDate}</div>`;
+
+    if ((currentReportType === 'masuk' || currentReportType === 'gabungan') && currentReportData.masuk.length > 0) {
+      if (currentReportType === 'gabungan') html += '<div class="section-header">📥 MASUK</div>';
+      html += `<table><tr><th>TANGGAL</th><th>ITEM</th><th>KODE</th><th style="text-align:right">QTY</th><th>CATATAN</th></tr>`;
+      currentReportData.masuk.forEach(m => {
+        html += `<tr class="masuk"><td>${m.tanggal}</td><td>${m.item_nama}</td><td>${m.kode||''}</td><td style="text-align:right">+${m.jumlah} ${m.satuan||''}</td><td>${m.catatan||''}</td></tr>`;
+      });
+      html += '</table>';
+    }
+    if ((currentReportType === 'keluar' || currentReportType === 'gabungan') && currentReportData.keluar.length > 0) {
+      if (currentReportType === 'gabungan') html += '<div class="section-header">📤 KELUAR</div>';
+      html += `<table><tr><th>TANGGAL</th><th>ITEM</th><th>KODE</th><th style="text-align:right">QTY</th><th>CATATAN</th></tr>`;
+      currentReportData.keluar.forEach(m => {
+        html += `<tr class="keluar"><td>${m.tanggal}</td><td>${m.item_nama}</td><td>${m.kode||''}</td><td style="text-align:right">-${m.jumlah} ${m.satuan||''}</td><td>${m.catatan||''}</td></tr>`;
+      });
+      html += '</table>';
+    }
+    html += '</body></html>';
+    printWin.document.write(html);
+    printWin.document.close();
+    printWin.print();
+    showToast('PDF window opened — gunakan Ctrl+P untuk print/save', 'success');
+  }
+}
+
+// Add movement record
+function addMovement(item, type, jumlah, catatan) {
+  const now = new Date();
+  const tanggal = now.toLocaleString('id', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/\./g,':');
+  const m = {
+    id: Date.now(),
+    item_id: item.id,
+    item_nama: item.nama,
+    kode: item.kode || '',
+    type: type,
+    jumlah: jumlah,
+    satuan: item.satuan || '',
+    tanggal: tanggal,
+    catatan: catatan || ''
+  };
+  movements.push(m);
+}
 
 /* ================================================
    INIT
