@@ -1239,12 +1239,12 @@ function doLogin(e) {
     return;
   }
 
-  if (user.password !== password && user.password !== password.toUpperCase()) {
+  if (user.password.toLowerCase() !== password.toLowerCase()) {
     const errEl = document.getElementById('loginError');
     const dbgEl = document.getElementById('loginDebug');
     errEl.textContent = 'PASSWORD SALAH';
     errEl.style.display = 'block';
-    dbgEl.textContent = `stored="${user.password}" vs entered="${password.toUpperCase()}"`;
+    dbgEl.textContent = `stored="${user.password}" vs entered="${password}"`;
     dbgEl.style.display = 'block';
     return;
   }
