@@ -1920,12 +1920,10 @@ function confirmDelete() {
   } else if (deleteType === 'setting' && deleteTarget !== null) {
     settings[currentSettingType].splice(deleteTarget, 1);
     showToast('Data berhasil dihapus!', 'success');
-    saveSettings();
-    closeDeleteModal();
-    console.log('DEBUG setting delete:', currentSettingType, 'after splice:', JSON.stringify(settings[currentSettingType]));
-    renderSettingsList();
+    closeDeleteModal(); // Close delete modal first
+    renderSettingsList(); // Now render — user sees list refresh
     populateDropdowns(); // refresh datalist in item form
-    console.log('DEBUG renderSettingsList done, list innerHTML:', document.getElementById('settingsList').innerHTML.substring(0, 200));
+    saveSettings();
     return;
   }
   closeDeleteModal();
