@@ -1112,7 +1112,7 @@ function doLogin(e) {
   e.preventDefault();
   const username = document.getElementById('loginUsername').value;
   const password = document.getElementById('loginPassword').value;
-  const user = users.find(u => u.username === username);
+  const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
   const err = document.getElementById('loginError');
 
   if (!user) {
