@@ -215,7 +215,17 @@ body {
 .settings-header {
   padding: 10px 16px 6px; font-size: 10px; letter-spacing: 2px;
   color: var(--text-muted); font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
 }
+.settings-header:hover { color: var(--text); }
+.settings-header::after { content: '▼'; font-size: 8px; transition: transform 0.2s; }
+.settings-header.collapsed::after { transform: rotate(-90deg); }
+.accordion-group { overflow: hidden; }
+.accordion-group.collapsed { display: none; }
 .settings-item {
   padding: 11px 16px; cursor: pointer; font-size: 12px;
   color: var(--text-secondary); transition: all 0.12s;
@@ -684,22 +694,45 @@ body {
       <div class="settings-wrap">
         <button class="settings-btn" onclick="toggleSettings()">⚙ SETTINGS ▼</button>
         <div class="settings-dropdown" id="settingsDropdown">
-          <div class="settings-header">REFERENCE DATA</div>
-          <div class="settings-item" onclick="openSettings('lokasi')"><span class="icon">📍</span> LOKASI</div>
-          <div class="settings-item" onclick="openSettings('kota')"><span class="icon">🏙</span> KOTA</div>
-          <div class="settings-item" onclick="openSettings('customer')"><span class="icon">👤</span> CUSTOMER</div>
-          <div class="settings-item" onclick="openSettings('supplier')"><span class="icon">🏭</span> SUPPLIER</div>
-          <div class="settings-item" onclick="openSettings('satuan')"><span class="icon">📦</span> SATUAN</div>
-          <div class="settings-header" id="settingsLapHeader" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--border)">LAPORAN</div>
-          <div class="settings-item" onclick="openReport('masuk')"><span class="icon">📥</span> Barang Masuk</div>
-          <div class="settings-item" onclick="openReport('keluar')"><span class="icon">📤</span> Barang Keluar</div>
-          <div class="settings-item" onclick="openReport('gabungan')"><span class="icon">📋</span> Laporan Gabungan</div>
-          <div class="settings-header" id="settingsUserHeader" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--border)">USER MANAGEMENT</div>
-          <div class="settings-item" onclick="openPage('user')" id="settingsUserBtn"><span class="icon">👥</span> USER MANAGEMENT</div>
-          <div class="settings-header" id="settingsFileHeader" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--border)">FILE MANAGEMENT</div>
-          <div class="settings-item" onclick="if(can('db_new')){newDatabase();toggleSettings()}" id="menuNewDB"><span class="icon">🆕</span> New</div>
-          <div class="settings-item" onclick="if(can('db_save')){saveDatabase();toggleSettings()}" id="menuSaveDB"><span class="icon">💾</span> Save</div>
-          <div class="settings-item" onclick="if(can('db_open')){openLoadDB();toggleSettings()}" id="menuOpenDB"><span class="icon">📂</span> Open</div>
+          <div class="accordion-group" id="accRef">
+            <div class="settings-header collapsed" onclick="toggleAccordion(this)">REFERENCE DATA</div>
+            <div class="accordion-group collapsed">
+              <div class="settings-item" onclick="openSettings('lokasi')"><span class="icon">📍</span> LOKASI</div>
+              <div class="settings-item" onclick="openSettings('kota')"><span class="icon">🏙</span> KOTA</div>
+              <div class="settings-item" onclick="openSettings('customer')"><span class="icon">👤</span> CUSTOMER</div>
+              <div class="settings-item" onclick="openSettings('supplier')"><span class="icon">🏭</span> SUPPLIER</div>
+              <div class="settings-item" onclick="openSettings('satuan')"><span class="icon">📦</span> SATUAN</div>
+            </div>
+          </div>
+          <div class="accordion-group" id="accTrans">
+            <div class="settings-header collapsed" onclick="toggleAccordion(this)">TRANSAKSI</div>
+            <div class="accordion-group collapsed">
+              <div class="settings-item" onclick="openTransaksi('pembelian')"><span class="icon">📥</span> Faktur Pembelian</div>
+              <div class="settings-item" onclick="openTransaksi('pengiriman')"><span class="icon">📤</span> Faktur Pengiriman</div>
+            </div>
+          </div>
+          <div class="accordion-group" id="accLap">
+            <div class="settings-header collapsed" onclick="toggleAccordion(this)">LAPORAN</div>
+            <div class="accordion-group collapsed">
+              <div class="settings-item" onclick="openReport('masuk')"><span class="icon">📥</span> Barang Masuk</div>
+              <div class="settings-item" onclick="openReport('keluar')"><span class="icon">📤</span> Barang Keluar</div>
+              <div class="settings-item" onclick="openReport('gabungan')"><span class="icon">📋</span> Laporan Gabungan</div>
+            </div>
+          </div>
+          <div class="accordion-group" id="accUser">
+            <div class="settings-header collapsed" onclick="toggleAccordion(this)">USER MANAGEMENT</div>
+            <div class="accordion-group collapsed">
+              <div class="settings-item" onclick="openPage('user')" id="settingsUserBtn"><span class="icon">👥</span> USER MANAGEMENT</div>
+            </div>
+          </div>
+          <div class="accordion-group" id="accFile">
+            <div class="settings-header collapsed" onclick="toggleAccordion(this)">FILE MANAGEMENT</div>
+            <div class="accordion-group collapsed">
+              <div class="settings-item" onclick="if(can('db_new')){newDatabase();toggleSettings()}" id="menuNewDB"><span class="icon">🆕</span> New</div>
+              <div class="settings-item" onclick="if(can('db_save')){saveDatabase();toggleSettings()}" id="menuSaveDB"><span class="icon">💾</span> Save</div>
+              <div class="settings-item" onclick="if(can('db_open')){openLoadDB();toggleSettings()}" id="menuOpenDB"><span class="icon">📂</span> Open</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1513,6 +1546,20 @@ function toggleSettings() {
   document.getElementById('settingsDropdown').classList.toggle('show');
   document.getElementById('userSwitchPanel').classList.remove('show');
 }
+
+function toggleAccordion(headerEl) {
+  // headerEl is passed as 'this' from onclick
+  // Find the next sibling which is the content accordion-group
+  const content = headerEl.nextElementSibling;
+  const isCollapsed = headerEl.classList.contains('collapsed');
+  if (isCollapsed) {
+    headerEl.classList.remove('collapsed');
+    if (content && content.classList.contains('accordion-group')) content.classList.remove('collapsed');
+  } else {
+    headerEl.classList.add('collapsed');
+    if (content && content.classList.contains('accordion-group')) content.classList.add('collapsed');
+  }
+}
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.settings-wrap')) {
     document.getElementById('settingsDropdown').classList.remove('show');
@@ -2121,8 +2168,13 @@ function confirmMovement() {
 }
 
 /* ================================================
-   REPORTS
+   TRANSAKSI (FAKTUR PEMBELIAN/PENGIRIMAN)
    ================================================ */
+
+function openTransaksi(type) {
+  toggleSettings();
+  showToast('Faktur ' + (type === 'pembelian' ? 'Pembelian' : 'Pengiriman') + ' — fitur sedang dalam pengembangan', 'info');
+}
 let currentReportType = 'masuk';
 let currentReportData = { masuk: [], keluar: [] };
 
