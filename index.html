@@ -1920,10 +1920,11 @@ function confirmDelete() {
   } else if (deleteType === 'setting' && deleteTarget !== null) {
     settings[currentSettingType].splice(deleteTarget, 1);
     showToast('Data berhasil dihapus!', 'success');
-    // Skip saveSettings to test — just re-render
+    saveSettings();
     closeDeleteModal();
     console.log('DEBUG setting delete:', currentSettingType, 'after splice:', JSON.stringify(settings[currentSettingType]));
     renderSettingsList();
+    populateDropdowns(); // refresh datalist in item form
     console.log('DEBUG renderSettingsList done, list innerHTML:', document.getElementById('settingsList').innerHTML.substring(0, 200));
     return;
   }
@@ -1958,6 +1959,7 @@ function addSetting() {
   showToast('Data berhasil ditambahkan!', 'success');
   saveSettings();
   renderSettingsList();
+  populateDropdowns(); // refresh datalist in item form
 }
 
 document.getElementById('newSettingValue').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addSetting(); } });
