@@ -384,22 +384,39 @@ body {
 .user-table .actions { display: flex; gap: 4px; }
 .user-table .actions .btn { padding: 4px 8px; font-size: 10px; }
 
-/* PERMISSION MATRIX */
-.permissions-section {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
+/* PERMISSION CARDS */
+.perm-cards { }
+.perm-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
 }
-
-.permissions-section:last-child { border-bottom: none; }
-
-.permissions-title {
-  font-size: 9px;
+.perm-card-title {
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--accent);
-  margin-bottom: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
   text-transform: uppercase;
 }
+.perm-card-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  gap: 6px;
+}
+.perm-card-item + .perm-card-item { border-top: 1px solid var(--border); }
+.perm-card-item:first-of-type { border-top: none; }
+.perm-card-item .perm-icon { font-size: 12px; }
+.perm-card-checks { display: flex; gap: 8px; align-items: center; }
+.perm-card-checks label { font-size: 9px; color: var(--text-muted); letter-spacing: 1px; }
+.perm-card-checks input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--accent); cursor: pointer; }
 
 .permissions-table {
   width: 100%;
@@ -752,25 +769,33 @@ body {
       </table>
     </div>
 
-    <!-- PERMISSION MATRIX -->
-    <div style="margin-top:24px">
+    <!-- PERMISSION MATRIX — 3 COLUMNS -->
+    <div style="margin-top:16px">
       <div class="page-header" style="padding:10px 16px">
         <div class="page-title" style="font-size:11px">🔐 PERMISSION MATRIX</div>
         <button class="btn btn-info btn-sm" style="font-size:10px;padding:6px 12px" onclick="savePermissions()" id="btnSavePerm">💾 SIMPAN</button>
       </div>
 
-      <div class="page-content" style="padding:8px 14px">
-        <table class="permissions-table" style="font-size:10px">
-          <thead>
-            <tr>
-              <th style="padding:5px 8px">SECTION</th>
-              <th style="padding:5px 8px;text-align:center">ADMIN</th>
-              <th style="padding:5px 8px;text-align:center">MANAGER</th>
-              <th style="padding:5px 8px;text-align:center">USER</th>
-            </tr>
-          </thead>
-          <tbody id="permMaster"></tbody>
-        </table>
+      <div class="perm-cards" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:10px 16px">
+
+        <!-- MASTER DATA ACCESS -->
+        <div class="perm-card">
+          <div class="perm-card-title">📋 MASTER DATA</div>
+          <div id="permMaster"></div>
+        </div>
+
+        <!-- ITEM OPERATIONS -->
+        <div class="perm-card">
+          <div class="perm-card-title">📦 ITEM OPS</div>
+          <div id="permItem"></div>
+        </div>
+
+        <!-- SYSTEM -->
+        <div class="perm-card">
+          <div class="perm-card-title">⚙️ SYSTEM</div>
+          <div id="permSystem"></div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1241,36 +1266,41 @@ function openPage(page) {
 function renderPermissionMatrix() {
   const roles = ['admin','manager','user'];
 
-  let html = '';
-
   // MASTER DATA ACCESS
-  html += `<tr style="background:var(--surface-active)"><td colspan="4" style="padding:4px 8px;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--accent)">📋 MASTER DATA ACCESS</td></tr>`;
+  let htmlMaster = '';
   PERMISSIONS.master.forEach(p => {
-    html += `<tr>
-      <td><span class="perm-label"><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/,'')}</span></td>
-      ${roles.map(r => `<td class="check"><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"></td>`).join('')}
-    </tr>`;
+    htmlMaster += `<div class="perm-card-item">
+      <span><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/, '')}</span>
+      <div class="perm-card-checks">
+        ${roles.map(r => `<label><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"> ${r.slice(0,3).toUpperCase()}</label>`).join('')}
+      </div>
+    </div>`;
   });
+  document.getElementById('permMaster').innerHTML = htmlMaster;
 
   // ITEM OPERATIONS
-  html += `<tr style="background:var(--surface-active)"><td colspan="4" style="padding:4px 8px;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--accent)">📦 ITEM OPERATIONS</td></tr>`;
+  let htmlItem = '';
   PERMISSIONS.item.forEach(p => {
-    html += `<tr>
-      <td><span class="perm-label"><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/,'')}</span></td>
-      ${roles.map(r => `<td class="check"><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"></td>`).join('')}
-    </tr>`;
+    htmlItem += `<div class="perm-card-item">
+      <span><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/, '')}</span>
+      <div class="perm-card-checks">
+        ${roles.map(r => `<label><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"> ${r.slice(0,3).toUpperCase()}</label>`).join('')}
+      </div>
+    </div>`;
   });
+  document.getElementById('permItem').innerHTML = htmlItem;
 
   // SYSTEM
-  html += `<tr style="background:var(--surface-active)"><td colspan="4" style="padding:4px 8px;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--accent)">⚙️ SYSTEM</td></tr>`;
+  let htmlSystem = '';
   PERMISSIONS.system.forEach(p => {
-    html += `<tr>
-      <td><span class="perm-label"><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/,'')}</span></td>
-      ${roles.map(r => `<td class="check"><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"></td>`).join('')}
-    </tr>`;
+    htmlSystem += `<div class="perm-card-item">
+      <span><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/, '')}</span>
+      <div class="perm-card-checks">
+        ${roles.map(r => `<label><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"> ${r.slice(0,3).toUpperCase()}</label>`).join('')}
+      </div>
+    </div>`;
   });
-
-  document.getElementById('permMaster').innerHTML = html;
+  document.getElementById('permSystem').innerHTML = htmlSystem;
 }
 
 function togglePerm(role, key, val) {
