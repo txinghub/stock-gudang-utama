@@ -190,6 +190,8 @@ body {
 .btn-ghost:hover { background: var(--surface); color: var(--text); border-color: var(--border-focus); }
 .btn-danger { background: var(--danger-dim); color: var(--danger); border: 1px solid transparent; }
 .btn-danger:hover { background: var(--danger); color: #fff; }
+.btn-edit { background: var(--primary-dim); color: var(--primary); border: 1px solid transparent; }
+.btn-edit:hover { background: var(--primary); color: #fff; }
 .btn-info { background: var(--info-dim); color: var(--info); border: 1px solid transparent; }
 .btn-info:hover { background: var(--info); color: #fff; }
 .btn-sm { padding: 5px 12px; font-size: 11px; }
@@ -1995,12 +1997,53 @@ function renderSettingsList() {
     return;
   }
   list.innerHTML = data.map((item, idx) => `
-    <div class="settings-list-item">
-      <span class="settings-list-label">${item}</span>
-      <div class="settings-list-actions">
+    <div class="settings-list-item" id="setting-item-${idx}">
+      <span class="settings-list-label" id="setting-label-${idx}">${item}</span>
+      <div class="settings-list-actions" id="setting-actions-${idx}">
+        <button class="btn btn-edit btn-sm btn-icon" onclick="openEditSetting(${idx})" title="Edit">✎</button>
         <button class="btn btn-danger btn-sm btn-icon" onclick="openDeleteSetting(${idx})" title="Hapus">×</button>
       </div>
     </div>`).join('');
+}
+
+function openEditSetting(idx) {
+  const label = document.getElementById('setting-label-' + idx);
+  const actions = document.getElementById('setting-actions-' + idx);
+  const item = settings[currentSettingType][idx];
+  if (!label || !item) return;
+
+  // Replace label with input
+  label.outerHTML = `<input id="setting-edit-${idx}" class="form-control" style="flex:1;min-width:0;font-size:13px;padding:4px 8px;height:auto" value="${item}" onkeydown="if(event.key==='Enter')saveEditSetting(${idx});if(event.key==='Escape')cancelEditSetting(${idx})">`;
+
+  // Replace actions with save + cancel
+  actions.outerHTML = `<div class="settings-list-actions">
+    <button class="btn btn-primary btn-sm" onclick="saveEditSetting(${idx})">✓</button>
+    <button class="btn btn-secondary btn-sm" onclick="cancelEditSetting(${idx})">✕</button>
+  </div>`;
+}
+
+function saveEditSetting(idx) {
+  const input = document.getElementById('setting-edit-' + idx);
+  if (!input) return;
+  const newVal = input.value.trim().toUpperCase();
+  const oldVal = settings[currentSettingType][idx];
+  if (!newVal) { showToast('Data tidak boleh kosong!', 'error'); return; }
+  if (newVal !== oldVal) {
+    // Case-insensitive duplicate check (exclude current item)
+    const dup = settings[currentSettingType].some((v, i) => i !== idx && v.toUpperCase() === newVal);
+    if (dup) { showToast('Data sudah ada!', 'error'); return; }
+    settings[currentSettingType][idx] = newVal;
+    settings[currentSettingType].sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()));
+  }
+  saveSettings();
+  renderSettingsList();
+  populateDropdowns();
+  syncSettingsUppercase();
+  showToast('Data berhasil diupdate!', 'success');
+}
+
+function cancelEditSetting(idx) {
+  renderSettingsList();
 }
 
 function openDeleteSetting(idx) {
