@@ -712,15 +712,15 @@ body {
       <span class="stat-value" id="statTotal">0</span>
     </div>
     <div class="stat-item aman" id="statAman" onclick="filterStat('aman', this)">
-      <span>AMAN</span>
+      <span>NORMAL</span>
       <span class="stat-value" id="statAmanVal">0</span>
     </div>
     <div class="stat-item hampir" id="statHampir" onclick="filterStat('hampir', this)">
-      <span>HAMPIR</span>
+      <span>HIGH</span>
       <span class="stat-value" id="statHampirVal">0</span>
     </div>
     <div class="stat-item kritis" id="statKritis" onclick="filterStat('kritis', this)">
-      <span>KRITIS</span>
+      <span>LOW</span>
       <span class="stat-value" id="statKritisVal">0</span>
     </div>
     <div class="stat-item stats-right" style="border-right:none;border-left:1px solid var(--border)">
@@ -732,9 +732,9 @@ body {
   <!-- TABS -->
   <div class="tabs" id="mainTabs">
     <button class="tab active" data-filter="all" onclick="switchTab(this)">SEMUA</button>
-    <button class="tab" data-filter="aman" onclick="switchTab(this)">🟢 AMAN</button>
-    <button class="tab" data-filter="hampir" onclick="switchTab(this)">🟡 HAMPIR</button>
-    <button class="tab" data-filter="kritis" onclick="switchTab(this)">🔴 KRITIS</button>
+    <button class="tab" data-filter="aman" onclick="switchTab(this)">🟢 NORMAL</button>
+    <button class="tab" data-filter="hampir" onclick="switchTab(this)">🟡 HIGH</button>
+    <button class="tab" data-filter="kritis" onclick="switchTab(this)">🔴 LOW</button>
   </div>
 
   <!-- ===== MAIN CONTENT: ITEMS ===== -->
@@ -843,14 +843,25 @@ body {
           <input type="number" class="form-input" id="fStok" value="0" min="0">
         </div>
         <div class="form-group">
-          <label class="form-label">MIN. STOK</label>
+          <label class="form-label">MIN. STOK (NORMAL)</label>
           <input type="number" class="form-input" id="fMinStok" value="10" min="0">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
+          <label class="form-label">HIGH (batas atas)</label>
+          <input type="number" class="form-input" id="fHighStok" value="" min="0" placeholder="kosongkan = auto 2x">
+        </div>
+        <div class="form-group">
+          <label class="form-label">LOW (batas bawah)</label>
+          <input type="number" class="form-input" id="fLowStok" value="" min="0" placeholder="kosongkan = auto 50%">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
           <label class="form-label">SATUAN *</label>
-          <select class="form-select" id="fSatuan" required><option value="">— Pilih —</option></select>
+          <input type="text" class="form-input" id="fSatuan" list="satuanDatalist" required placeholder="Ketik atau pilih..." autocomplete="off">
+          <datalist id="satuanDatalist"></datalist>
         </div>
         <div class="form-group">
           <label class="form-label">CUSTOMER</label>
@@ -1206,9 +1217,17 @@ function doLogin(e) {
 
 function doLogout() {
   currentUser = null;
+  // Clear localStorage synchronously by setting a dummy value first,
+  // then removing — ensures the removal is committed before page unload
+  localStorage.setItem('stockgudang_lastuser', '__LOGGING_OUT__');
+  localStorage.removeItem('stockgudang_lastuser');
   document.getElementById('mainApp').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginPassword').value = '';
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginRoleBadge').textContent = 'SELECT USER';
+  document.getElementById('loginRoleBadge').className = 'login-role-badge';
+  document.getElementById('loginAvatar').textContent = '👤';
   document.getElementById('userSwitchPanel').classList.remove('show');
 }
 
@@ -1537,21 +1556,33 @@ function handleSearch(val) {
 }
 
 /* ================================================
-   STOCK STATUS
+   STOCK STATUS (3-threshold: HIGH/NORMAL/LOW)
    ================================================ */
 function getStockStatus(item) {
-  const stok = item.stok || 0, min = item.min_stok || 10;
+  const stok = item.stok || 0;
+  const normal = item.min_stok || 10; // NORMAL = min_stok
+  const high = item.high_stok;         // HIGH threshold (optional)
+  const low = item.low_stok;           // LOW threshold (optional)
+
   if (stok === 0) return 'zero';
-  const ratio = stok / min;
-  if (ratio >= 2) return 'aman';
-  if (ratio >= 1) return 'hampir';
-  return 'kritis';
+
+  // If HIGH/LOW defined, use them
+  if (high !== undefined && high !== null && high !== '' && low !== undefined && low !== null && low !== '') {
+    if (stok > high) return 'aman';      // HIGH
+    if (stok < low) return 'kritis';     // LOW
+    return 'hampir';                     // NORMAL
+  }
+
+  // Fallback: ratio-based
+  if (stok >= normal * 2) return 'aman';    // HIGH
+  if (stok <= normal * 0.5) return 'kritis'; // LOW
+  return 'hampir';                           // NORMAL
 }
 
 function getStatusLabel(s) {
-  if (s === 'aman') return 'AMAN';
-  if (s === 'hampir') return 'HAMPIR';
-  if (s === 'kritis') return 'KRITIS';
+  if (s === 'aman') return 'NORMAL';
+  if (s === 'hampir') return 'HIGH';
+  if (s === 'kritis') return 'LOW';
   return 'ZERO';
 }
 
@@ -1597,7 +1628,7 @@ function renderCards() {
       <div class="card-stok-bar"><div class="card-stok-fill ${status}" style="width:${pct}%"></div></div>
       <div class="card-info">
         <div class="card-row"><span class="card-row-label">STOK</span><span class="card-row-value">${item.stok||0} ${item.satuan||''}</span></div>
-        <div class="card-row"><span class="card-row-label">MIN</span><span class="card-row-value">${item.min_stok||10} ${item.satuan||''}</span></div>
+        <div class="card-row"><span class="card-row-label">NORMAL</span><span class="card-row-value">${item.min_stok||10} ${item.satuan||''}</span></div>
         <div class="card-row"><span class="card-row-label">LOKASI</span><span class="card-row-value">${item.lokasi||'—'}</span></div>
         <div class="card-row"><span class="card-row-label">SUPPLIER</span><span class="card-row-value">${item.supplier||'—'}</span></div>
       </div>
@@ -1618,6 +1649,8 @@ function openAddItem() {
   document.getElementById('fId').value = '';
   document.getElementById('fStok').value = '0';
   document.getElementById('fMinStok').value = '10';
+  document.getElementById('fHighStok').value = '';
+  document.getElementById('fLowStok').value = '';
   populateDropdowns();
   document.getElementById('itemModal').classList.add('show');
 }
@@ -1630,13 +1663,11 @@ function openEditItem(id) {
   const item = items.find(i => i.id === id);
   if (!item) return;
   document.getElementById('modalTitle').textContent = '✏️ EDIT ITEM';
-  ['Nama','Kode','Lokasi','Kota','Supplier','Stok','Satuan','MinStok','Customer','Catatan'].forEach(f => {
+  ['Nama','Kode','Lokasi','Kota','Supplier','Stok','Satuan','MinStok','HighStok','LowStok','Customer','Catatan'].forEach(f => {
     const el = document.getElementById('f'+f);
     if (el) el.value = item[f.charAt(0).toLowerCase() + f.slice(1)] || '';
   });
   document.getElementById('fId').value = id;
-  document.getElementById('fCustomer').value = item.customer || '';
-  document.getElementById('fCatatan').value = item.catatan || '';
   populateDropdowns();
   closeDetailModal();
   document.getElementById('itemModal').classList.add('show');
@@ -1653,12 +1684,22 @@ function saveItem(e) {
     stok: parseInt(document.getElementById('fStok').value) || 0,
     satuan: document.getElementById('fSatuan').value,
     min_stok: parseInt(document.getElementById('fMinStok').value) || 10,
+    high_stok: document.getElementById('fHighStok').value ? parseInt(document.getElementById('fHighStok').value) : null,
+    low_stok: document.getElementById('fLowStok').value ? parseInt(document.getElementById('fLowStok').value) : null,
     customer: document.getElementById('fCustomer').value,
     catatan: document.getElementById('fCatatan').value.trim(),
   };
   if (!data.nama) { showToast('NAMA ITEM wajib diisi!', 'error'); return; }
   if (!data.lokasi) { showToast('LOKASI wajib diisi!', 'error'); return; }
   if (!data.satuan) { showToast('SATUAN wajib diisi!', 'error'); return; }
+  // Auto-add new satuan to settings if not exists
+  if (!settings.satuan) settings.satuan = [];
+  const sat = data.satuan.trim().toUpperCase();
+  if (sat && !settings.satuan.includes(sat)) {
+    settings.satuan.push(sat);
+    settings.satuan.sort();
+    saveSettings();
+  }
 
   if (editingItemId) {
     const idx = items.findIndex(i => i.id === editingItemId);
@@ -1679,6 +1720,15 @@ function populateDropdowns() {
   ['lokasi','kota','supplier','satuan','customer'].forEach(type => {
     const sel = document.getElementById('f' + type.charAt(0).toUpperCase() + type.slice(1));
     if (!sel) return;
+    // SATUAN uses datalist (text input) — skip select population
+    if (type === 'satuan') {
+      const dl = document.getElementById('satuanDatalist');
+      if (dl) {
+        dl.innerHTML = '';
+        (settings[type]||[]).forEach(v => { dl.innerHTML += `<option value="${v}">`; });
+      }
+      return;
+    }
     const cur = sel.value;
     sel.innerHTML = '<option value="">— Pilih —</option>';
     (settings[type]||[]).forEach(v => { sel.innerHTML += `<option value="${v}">${v}</option>`; });
@@ -1713,13 +1763,13 @@ function openDetail(id) {
       <div class="detail-item"><div class="detail-label">KOTA</div><div class="detail-value">${item.kota||'—'}</div></div>
       <div class="detail-item"><div class="detail-label">SUPPLIER</div><div class="detail-value">${item.supplier||'—'}</div></div>
       <div class="detail-item"><div class="detail-label">CUSTOMER</div><div class="detail-value">${item.customer||'—'}</div></div>
-      <div class="detail-item"><div class="detail-label">MIN. STOK</div><div class="detail-value">${item.min_stok||10} ${item.satuan||''}</div></div>
+      <div class="detail-item"><div class="detail-label">NORMAL</div><div class="detail-value">${item.min_stok||10} ${item.satuan||''}</div></div>
+      ${item.high_stok ? '<div class="detail-item"><div class="detail-label">HIGH</div><div class="detail-value">${item.high_stok} ${item.satuan||""}</div></div>' : ''}
+      ${item.low_stok ? '<div class="detail-item"><div class="detail-label">LOW</div><div class="detail-value">${item.low_stok} ${item.satuan||""}</div></div>' : ''}
       <div class="detail-item"><div class="detail-label">SELISIH</div><div class="detail-value" style="color:${selisih>=0?'var(--success)':'var(--danger)'}">${selisih>=0?'+':''}${selisih} ${item.satuan||''}</div></div>
     </div>
     ${item.catatan ? `<div class="detail-catatan">📝 ${item.catatan}</div>` : ''}
     <div class="detail-actions">
-      <button class="btn btn-success" onclick="doMovement(${item.id},'MASUK')" ${!can('item_edit')?'disabled title="Tidak ada izin"':''}>📥 MASUK</button>
-      <button class="btn btn-warning" onclick="doMovement(${item.id},'KELUAR')" ${!can('item_edit')?'disabled title="Tidak ada izin"':''}>📤 KELUAR</button>
       <button class="btn btn-primary" onclick="openEditItem(${item.id})" ${!can('item_edit')?'disabled title="Tidak ada izin"':''}>✏️ EDIT</button>
       <button class="btn btn-danger" onclick="openDeleteItem(${item.id})" ${!can('item_delete')?'disabled title="Tidak ada izin"':''}>🗑️</button>
     </div>
@@ -1831,7 +1881,7 @@ function openDeleteSetting(idx) {
 function saveToDB() {
   if (!db) {
     db = new SQL.Database();
-    db.run(`CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY, nama TEXT, kode TEXT, lokasi TEXT, kota TEXT, supplier TEXT, satuan TEXT, stok INTEGER DEFAULT 0, min_stok INTEGER DEFAULT 10, customer TEXT, catatan TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY, nama TEXT, kode TEXT, lokasi TEXT, kota TEXT, supplier TEXT, satuan TEXT, stok INTEGER DEFAULT 0, min_stok INTEGER DEFAULT 10, high_stok INTEGER, low_stok INTEGER, customer TEXT, catatan TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS settings (type TEXT, value TEXT, UNIQUE(type, value))`);
     db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, role TEXT, created TEXT, lastLogin TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS permissions (role TEXT, perm TEXT, value INTEGER)`);
@@ -1840,9 +1890,10 @@ function saveToDB() {
 
   db.run('DELETE FROM items');
   items.forEach(item => {
-    db.run(`INSERT INTO items VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    db.run(`INSERT INTO items VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [item.id, item.nama||'', item.kode||'', item.lokasi||'', item.kota||'',
-       item.supplier||'', item.satuan||'', item.stok||0, item.min_stok||10, item.customer||'', item.catatan||'']);
+       item.supplier||'', item.satuan||'', item.stok||0, item.min_stok||10,
+       item.high_stok||null, item.low_stok||null, item.customer||'', item.catatan||'']);
   });
 
   db.run('DELETE FROM users');
@@ -1937,7 +1988,7 @@ function newDatabase() {
   if (!confirm('Buat database baru? Data saat ini akan dihapus.')) return;
   if (db) db.close();
   db = new SQL.Database();
-  db.run(`CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY, nama TEXT, kode TEXT, lokasi TEXT, kota TEXT, supplier TEXT, satuan TEXT, stok INTEGER DEFAULT 0, min_stok INTEGER DEFAULT 10, customer TEXT, catatan TEXT)`);
+  db.run(`CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY, nama TEXT, kode TEXT, lokasi TEXT, kota TEXT, supplier TEXT, satuan TEXT, stok INTEGER DEFAULT 0, min_stok INTEGER DEFAULT 10, high_stok INTEGER, low_stok INTEGER, customer TEXT, catatan TEXT)`);
   db.run(`CREATE TABLE IF NOT EXISTS settings (type TEXT, value TEXT, UNIQUE(type, value))`);
   db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, role TEXT, created TEXT, lastLogin TEXT)`);
   db.run(`CREATE TABLE IF NOT EXISTS permissions (role TEXT, perm TEXT, value INTEGER)`);
