@@ -661,10 +661,6 @@ body {
       </div>
     </div>
     <div class="navbar-right">
-      <button class="btn btn-ghost btn-sm" onclick="newDatabase()" title="Database Baru" id="btnNewDB">🆕 New</button>
-      <button class="btn btn-ghost btn-sm" onclick="saveDatabase()" title="Simpan Database" id="btnSaveDB">💾 Save</button>
-      <button class="btn btn-ghost btn-sm" onclick="openLoadDB()" title="Load Database" id="btnOpenDB">📂 Open</button>
-
       <!-- USER BADGE -->
       <div class="settings-wrap" style="position:relative">
         <div class="user-badge-nav" onclick="toggleUserPanel()" style="display:flex;align-items:center;gap:8px">
@@ -696,6 +692,10 @@ body {
           <div class="settings-item" onclick="openSettings('satuan')"><span class="icon">📦</span> SATUAN</div>
           <div class="settings-header" id="settingsUserHeader" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--border)">USER MANAGEMENT</div>
           <div class="settings-item" onclick="openPage('user')" id="settingsUserBtn"><span class="icon">👥</span> USER MANAGEMENT</div>
+          <div class="settings-header" id="settingsFileHeader" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--border)">FILE MANAGEMENT</div>
+          <div class="settings-item" onclick="if(can('db_new')){newDatabase();toggleSettings()}" id="menuNewDB"><span class="icon">🆕</span> New</div>
+          <div class="settings-item" onclick="if(can('db_save')){saveDatabase();toggleSettings()}" id="menuSaveDB"><span class="icon">💾</span> Save</div>
+          <div class="settings-item" onclick="if(can('db_open')){openLoadDB();toggleSettings()}" id="menuOpenDB"><span class="icon">📂</span> Open</div>
         </div>
       </div>
     </div>
@@ -1213,13 +1213,17 @@ function applyPermissions() {
   const role = currentUser.role;
 
   // Hide/disable menu items
-  if (!can('db_new')) { document.getElementById('btnNewDB').style.display = 'none'; }
-  if (!can('db_save')) { document.getElementById('btnSaveDB').style.display = 'none'; }
-  if (!can('db_open')) { document.getElementById('btnOpenDB').style.display = 'none'; }
+  if (!can('db_new')) { document.getElementById('menuNewDB').style.display = 'none'; }
+  if (!can('db_save')) { document.getElementById('menuSaveDB').style.display = 'none'; }
+  if (!can('db_open')) { document.getElementById('menuOpenDB').style.display = 'none'; }
   if (!can('item_add')) { document.getElementById('btnAddItem').style.display = 'none'; }
   if (!can('user_mgmt')) {
     document.getElementById('settingsUserHeader').style.display = 'none';
     document.getElementById('settingsUserBtn').style.display = 'none';
+  }
+
+  if (!can('db_new') && !can('db_save') && !can('db_open')) {
+    document.getElementById('settingsFileHeader').style.display = 'none';
   }
 
   // Master data settings
