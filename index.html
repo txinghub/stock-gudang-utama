@@ -1950,8 +1950,8 @@ function closeSettingsModal() { document.getElementById('settingsModal').classLi
 
 function addSetting() {
   const input = document.getElementById('newSettingValue');
-  // Preserve case for CUSTOMER and SATUAN, uppercase for others
-  const preserveCaseTypes = ['customer', 'satuan'];
+  // Preserve case for CUSTOMER only, uppercase for others
+  const preserveCaseTypes = ['customer'];
   const val = preserveCaseTypes.includes(currentSettingType)
     ? input.value.trim()
     : input.value.trim().toUpperCase();
