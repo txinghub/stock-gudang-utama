@@ -393,11 +393,11 @@ body {
 .permissions-section:last-child { border-bottom: none; }
 
 .permissions-title {
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--accent);
-  margin-bottom: 16px;
+  margin-bottom: 6px;
   text-transform: uppercase;
 }
 
@@ -759,55 +759,21 @@ body {
         <button class="btn btn-info btn-sm" style="font-size:10px;padding:6px 12px" onclick="savePermissions()" id="btnSavePerm">💾 SIMPAN</button>
       </div>
 
-      <div class="page-content" style="padding:12px 16px">
-        <div class="permissions-section">
-          <div class="permissions-title">📋 MASTER DATA ACCESS</div>
-          <table class="permissions-table">
-            <thead>
-              <tr>
-                <th>MENU / PERMISSION</th>
-                <th>ADMIN</th>
-                <th>MANAGER</th>
-                <th>USER</th>
-              </tr>
-            </thead>
-            <tbody id="permMaster"></tbody>
-          </table>
-        </div>
-
-        <div class="permissions-section">
-          <div class="permissions-title">📦 ITEM OPERATIONS</div>
-          <table class="permissions-table">
-            <thead>
-              <tr>
-                <th>ACTION</th>
-                <th>ADMIN</th>
-                <th>MANAGER</th>
-                <th>USER</th>
-              </tr>
-            </thead>
-            <tbody id="permItem"></tbody>
-          </table>
-        </div>
-
-        <div class="permissions-section">
-          <div class="permissions-title">⚙️ SYSTEM</div>
-          <table class="permissions-table">
-            <thead>
-              <tr>
-                <th>ACTION</th>
-                <th>ADMIN</th>
-                <th>MANAGER</th>
-                <th>USER</th>
-              </tr>
-            </thead>
-            <tbody id="permSystem"></tbody>
-          </table>
-        </div>
+      <div class="page-content" style="padding:8px 14px">
+        <table class="permissions-table" style="font-size:10px">
+          <thead>
+            <tr>
+              <th style="padding:5px 8px">SECTION</th>
+              <th style="padding:5px 8px;text-align:center">ADMIN</th>
+              <th style="padding:5px 8px;text-align:center">MANAGER</th>
+              <th style="padding:5px 8px;text-align:center">USER</th>
+            </tr>
+          </thead>
+          <tbody id="permMaster"></tbody>
+        </table>
       </div>
     </div>
   </div>
-
 </div><!-- end mainApp -->
 
 <!-- ===== ADD/EDIT ITEM MODAL ===== -->
@@ -1274,34 +1240,37 @@ function openPage(page) {
    ================================================ */
 function renderPermissionMatrix() {
   const roles = ['admin','manager','user'];
-  const roleCols = { admin:'ADMIN', manager:'MANAGER', user:'USER' };
 
-  let htmlMaster = '', htmlItem = '', htmlSystem = '';
+  let html = '';
 
+  // MASTER DATA ACCESS
+  html += `<tr style="background:var(--surface-active)"><td colspan="4" style="padding:4px 8px;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--accent)">📋 MASTER DATA ACCESS</td></tr>`;
   PERMISSIONS.master.forEach(p => {
-    htmlMaster += `<tr>
+    html += `<tr>
       <td><span class="perm-label"><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/,'')}</span></td>
       ${roles.map(r => `<td class="check"><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"></td>`).join('')}
     </tr>`;
   });
 
+  // ITEM OPERATIONS
+  html += `<tr style="background:var(--surface-active)"><td colspan="4" style="padding:4px 8px;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--accent)">📦 ITEM OPERATIONS</td></tr>`;
   PERMISSIONS.item.forEach(p => {
-    htmlItem += `<tr>
+    html += `<tr>
       <td><span class="perm-label"><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/,'')}</span></td>
       ${roles.map(r => `<td class="check"><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"></td>`).join('')}
     </tr>`;
   });
 
+  // SYSTEM
+  html += `<tr style="background:var(--surface-active)"><td colspan="4" style="padding:4px 8px;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--accent)">⚙️ SYSTEM</td></tr>`;
   PERMISSIONS.system.forEach(p => {
-    htmlSystem += `<tr>
+    html += `<tr>
       <td><span class="perm-label"><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/,'')}</span></td>
       ${roles.map(r => `<td class="check"><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"></td>`).join('')}
     </tr>`;
   });
 
-  document.getElementById('permMaster').innerHTML = htmlMaster;
-  document.getElementById('permItem').innerHTML = htmlItem;
-  document.getElementById('permSystem').innerHTML = htmlSystem;
+  document.getElementById('permMaster').innerHTML = html;
 }
 
 function togglePerm(role, key, val) {
