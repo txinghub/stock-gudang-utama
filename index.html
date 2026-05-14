@@ -774,8 +774,8 @@ body {
   <!-- TABS -->
   <div class="tabs" id="mainTabs">
     <button class="tab active" data-filter="all" onclick="switchTab(this)">SEMUA <span id="tabAllCount">0</span></button>
-    <button class="tab" data-filter="aman" onclick="switchTab(this)">🟢 NORMAL <span id="tabNormalCount">0</span></button>
-    <button class="tab" data-filter="hampir" onclick="switchTab(this)">🟡 HIGH <span id="tabHighCount">0</span></button>
+    <button class="tab" data-filter="aman" onclick="switchTab(this)">🟢 HIGH <span id="tabNormalCount">0</span></button>
+    <button class="tab" data-filter="hampir" onclick="switchTab(this)">🟡 NORMAL <span id="tabHighCount">0</span></button>
     <button class="tab" data-filter="kritis" onclick="switchTab(this)">🔴 LOW <span id="tabLowCount">0</span></button>
   </div>
 
@@ -1717,8 +1717,8 @@ function getStockStatus(item) {
 }
 
 function getStatusLabel(s) {
-  if (s === 'aman') return 'NORMAL';
-  if (s === 'hampir') return 'HIGH';
+  if (s === 'aman') return 'HIGH';
+  if (s === 'hampir') return 'NORMAL';
   if (s === 'kritis') return 'LOW';
   return 'ZERO';
 }
