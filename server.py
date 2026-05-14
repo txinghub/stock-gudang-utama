@@ -238,7 +238,7 @@ def login():
     print('DEBUG username:', repr(username), 'password:', repr(password))
     
     conn = get_db()
-    cur = conn.execute("SELECT * FROM users WHERE username = ?", (username,))
+    cur = conn.execute("SELECT * FROM users WHERE UPPER(username) = ?", (username,))
     user = dict_from_row(cur.fetchone())
     conn.close()
     
