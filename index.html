@@ -1675,9 +1675,10 @@ function handleKatFilter(val) {
 function populateKatFilter() {
   const sel = document.getElementById('filterKat');
   if (!sel) return;
-  const uniqueKats = [...new Set(items.map(i => i.kategori).filter(Boolean))].sort();
+  // Populate from settings.kategori (which has real data), not from items (which may be empty)
+  const kats = (settings.kategori || []).slice().sort();
   sel.innerHTML = '<option value="">SEMUA KAT</option>';
-  uniqueKats.forEach(k => { sel.innerHTML += `<option value="${k}">${k}</option>`; });
+  kats.forEach(k => { sel.innerHTML += `<option value="${k}">${k}</option>`; });
   sel.value = currentKatFilter;
 }
 
