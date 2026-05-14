@@ -1808,7 +1808,13 @@ function openEditItem(id) {
   document.getElementById('modalTitle').textContent = '✏️ EDIT ITEM';
   ['Nama','Kode','Lokasi','Kota','Supplier','Stok','Satuan','MinStok','HighStok','LowStok','Customer','Catatan','Kategori'].forEach(f => {
     const el = document.getElementById('f'+f);
-    if (el) el.value = item[f.charAt(0).toLowerCase() + f.slice(1)] || '';
+    if (!el) return;
+    const key = f === 'MinStok' ? 'min_stok' :
+                 f === 'HighStok' ? 'high_stok' :
+                 f === 'LowStok' ? 'low_stok' :
+                 f === 'Customer' ? 'customer' :
+                 f.charAt(0).toLowerCase() + f.slice(1);
+    el.value = item[key] || '';
   });
   document.getElementById('fId').value = id;
   populateDropdowns();
