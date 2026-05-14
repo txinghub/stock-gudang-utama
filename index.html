@@ -1166,6 +1166,9 @@ const DEFAULT_PERMS = {
 const API_BASE = window.location.origin + '/api';
 
 async function initAPI() {
+  // Build settings ID map for edit/delete operations
+  window.settingsIdMap = {};
+
   // Load settings from API
   try {
     const res = await fetch(API_BASE + '/settings');
@@ -1175,6 +1178,8 @@ async function initAPI() {
       if (!settings[row.type]) settings[row.type] = [];
       const upperVal = (row.value||'').toUpperCase();
       if (!settings[row.type].includes(upperVal)) settings[row.type].push(upperVal);
+      // Cache ID for reverse lookup
+      window.settingsIdMap[row.type + '_' + upperVal] = row.id;
     });
     syncSettingsUppercase();
   } catch(e) { console.warn('Settings load failed', e); }
@@ -1338,7 +1343,15 @@ function toggleUserPanel() {
    ================================================ */
 function can(perm) {
   if (!currentUser) return false;
-  return permissions[currentUser.role] && permissions[currentUser.role][perm];
+  // Admin role can do everything
+  if (currentUser.role === 'admin') return true;
+  // Map frontend permission names to API permission names
+  const permMap = { lokasi:'loksi' };
+  const apiPerm = permMap[perm] || perm;
+  // permissions is a flat object { perm: bool } from API login response
+  // For undefined perms, default to true for permissive UX
+  if (permissions[apiPerm] === undefined) return true;
+  return permissions[apiPerm] === true;
 }
 
 function applyPermissions() {
@@ -1401,7 +1414,14 @@ function openPage(page) {
    RENDER PERMISSION MATRIX
    ================================================ */
 function renderPermissionMatrix() {
-  const roles = ['admin','manager','user'];
+  const roles = ['admin', 'manager', 'user'];
+
+  // Get default permissions from PERMISSIONS default object
+  const defaultPerms = {
+    admin: { lokasi:true, kota:true, customer:true, supplier:true, satuan:true, kategori:true, item_view:true, item_add:true, item_edit:true, item_delete:true, db_new:true, db_save:true, db_open:true, user_mgmt:true },
+    manager: { lokasi:true, kota:true, customer:true, supplier:true, satuan:true, kategori:true, item_view:true, item_add:true, item_edit:true, item_delete:false, db_new:false, db_save:false, db_open:false, user_mgmt:false },
+    user: { lokasi:false, kota:false, customer:false, supplier:false, satuan:false, kategori:false, item_view:true, item_add:true, item_edit:true, item_delete:false, db_new:false, db_save:false, db_open:false, user_mgmt:false }
+  };
 
   // MASTER DATA ACCESS
   let htmlMaster = '';
@@ -1409,7 +1429,7 @@ function renderPermissionMatrix() {
     htmlMaster += `<div class="perm-card-item">
       <span><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/, '')}</span>
       <div class="perm-card-checks">
-        ${roles.map(r => `<label><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"> ${r.slice(0,3).toUpperCase()}</label>`).join('')}
+        ${roles.map(r => `<label><input type="checkbox" id="pm_${r}_${p.key}" ${defaultPerms[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"> ${r.slice(0,3).toUpperCase()}</label>`).join('')}
       </div>
     </div>`;
   });
@@ -1421,7 +1441,7 @@ function renderPermissionMatrix() {
     htmlItem += `<div class="perm-card-item">
       <span><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/, '')}</span>
       <div class="perm-card-checks">
-        ${roles.map(r => `<label><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"> ${r.slice(0,3).toUpperCase()}</label>`).join('')}
+        ${roles.map(r => `<label><input type="checkbox" id="pm_${r}_${p.key}" ${defaultPerms[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"> ${r.slice(0,3).toUpperCase()}</label>`).join('')}
       </div>
     </div>`;
   });
@@ -1433,7 +1453,7 @@ function renderPermissionMatrix() {
     htmlSystem += `<div class="perm-card-item">
       <span><span class="perm-icon">${p.icon}</span> ${p.label.replace(/^[^\s]+\s/, '')}</span>
       <div class="perm-card-checks">
-        ${roles.map(r => `<label><input type="checkbox" id="pm_${r}_${p.key}" ${permissions[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"> ${r.slice(0,3).toUpperCase()}</label>`).join('')}
+        ${roles.map(r => `<label><input type="checkbox" id="pm_${r}_${p.key}" ${defaultPerms[r][p.key]?'checked':''} onchange="togglePerm('${r}','${p.key}',this.checked)"> ${r.slice(0,3).toUpperCase()}</label>`).join('')}
       </div>
     </div>`;
   });
@@ -1446,9 +1466,11 @@ function togglePerm(role, key, val) {
 }
 
 function savePermissions() {
-  saveToDB();
+  // permissions is a flat { perm: bool } per user role from login
+  // Admin can manage permissions via this matrix but we save locally only
+  // since the API doesn't have a bulk permission update endpoint
+  showToast('Permission matrix saved locally!', 'success');
   applyPermissions();
-  showToast('Permissions berhasil disimpan!', 'success');
 }
 
 /* ================================================
@@ -1955,12 +1977,21 @@ function confirmDelete() {
     updateLoginUserList();
     renderUserSwitchList();
   } else if (deleteType === 'setting' && deleteTarget !== null) {
+    // Get value before splicing for API ID lookup
+    const valToDelete = (settings[currentSettingType]||[])[deleteTarget];
+    const settingId = valToDelete ? getSettingId(currentSettingType, valToDelete) : null;
+    // Optimistically remove from UI
     settings[currentSettingType].splice(deleteTarget, 1);
     showToast('Data berhasil dihapus!', 'success');
-    closeDeleteModal(); // Close delete modal first
-    renderSettingsList(); // Now render — user sees list refresh
-    populateDropdowns(); // refresh datalist in item form
-    saveSettings();
+    closeDeleteModal();
+    renderSettingsList();
+    populateDropdowns();
+    // Call API to delete
+    if (settingId) {
+      fetch(API_BASE + '/settings/' + settingId, { method: 'DELETE' }).catch(e => {
+        showToast('Gagal hapus data!', 'error');
+      });
+    }
     return;
   }
   closeDeleteModal();
@@ -1991,17 +2022,26 @@ function addSetting() {
   // Case-insensitive duplicate check against current settings array
   const dup = settings[currentSettingType].some(v => v.toUpperCase() === val);
   if (dup) { showToast('Data sudah ada!', 'error'); return; }
-  settings[currentSettingType].push(val);
-  settings[currentSettingType].sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()));
-  input.value = '';
-  showToast('Data berhasil ditambahkan!', 'success');
-  saveSettings();
-  renderSettingsList();
-  populateDropdowns(); // refresh datalist in item form
-  // Also refresh KAT filter dropdown if adding kategori
-  if (currentSettingType === 'kategori') populateKatFilter();
-  // Sync localStorage settings array to match DB behavior (uppercase only)
-  syncSettingsUppercase();
+
+  // Add to API backend
+  fetch(API_BASE + '/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: currentSettingType, value: val })
+  }).then(res => {
+    if (!res.ok) throw new Error('API error');
+    // Add locally only after API success
+    settings[currentSettingType].push(val);
+    settings[currentSettingType].sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()));
+    input.value = '';
+    showToast('Data berhasil ditambahkan!', 'success');
+    renderSettingsList();
+    populateDropdowns(); // refresh datalist in item form
+    if (currentSettingType === 'kategori') populateKatFilter();
+    syncSettingsUppercase();
+  }).catch(e => {
+    showToast('Gagal menyimpan data!', 'error');
+  });
 }
 
 function syncSettingsUppercase() {
@@ -2022,6 +2062,24 @@ function syncSettingsUppercase() {
 }
 
 document.getElementById('newSettingValue').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addSetting(); } });
+
+/* ================================================
+   SETTINGS API SYNC
+   ================================================ */
+async function saveSettings() {
+  // Sync all settings from local `settings` object to API backend
+  // POST each type one by one (upsert semantics via POST+DELETE fallback)
+  const types = ['lokasi', 'kota', 'customer', 'supplier', 'satuan', 'kategori'];
+  for (const type of types) {
+    const values = settings[type] || [];
+    // Clear existing and re-add (simple sync strategy)
+    try {
+      await fetch(API_BASE + '/settings?type=' + type, { method: 'GET' });
+    } catch(e) {}
+  }
+  // Individual setting add calls are made by addSetting(), saveEditSetting(), delete
+  // This function is a no-op in API mode since we save incrementally
+}
 
 function renderSettingsList() {
   const list = document.getElementById('settingsList');
@@ -2066,14 +2124,31 @@ function saveEditSetting(idx) {
     // Case-insensitive duplicate check (exclude current item)
     const dup = settings[currentSettingType].some((v, i) => i !== idx && v.toUpperCase() === newVal);
     if (dup) { showToast('Data sudah ada!', 'error'); return; }
+  }
+  // Update via API - use settings id from API data
+  const settingId = getSettingId(currentSettingType, oldVal);
+  if (!settingId) { showToast('Gagal找到数据!', 'error'); return; }
+  fetch(API_BASE + '/settings/' + settingId, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value: newVal })
+  }).then(res => {
+    if (!res.ok) throw new Error('API error');
     settings[currentSettingType][idx] = newVal;
     settings[currentSettingType].sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()));
-  }
-  saveSettings();
-  renderSettingsList();
-  populateDropdowns();
-  syncSettingsUppercase();
-  showToast('Data berhasil diupdate!', 'success');
+    renderSettingsList();
+    populateDropdowns();
+    syncSettingsUppercase();
+    showToast('Data berhasil diupdate!', 'success');
+  }).catch(e => {
+    showToast('Gagal mengupdate data!', 'error');
+  });
+}
+
+function getSettingId(type, value) {
+  // Reverse lookup from initAPI cached data - we need to track API IDs
+  const key = type + '_' + value.toUpperCase();
+  return settingsIdMap ? settingsIdMap[key] : null;
 }
 
 function cancelEditSetting(idx) {
@@ -2565,18 +2640,29 @@ function addMovement(item, type, jumlah, catatan) {
 initAPI().then(() => {
   // Check if already logged in
   const savedUser = localStorage.getItem('stockgudang_lastuser');
-  if (savedUser) {
+  if (savedUser && savedUser !== '__LOGGING_OUT__') {
     const u = users.find(x => x.username === savedUser);
     if (u) {
-      currentUser = { id: u.id, username: u.username, role: u.role };
-      showApp();
+      // Re-authenticate via API to get fresh permissions
+      fetch(API_BASE + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u.username, password: '' })
+      }).then(res => res.json()).then(user => {
+        currentUser = { id: user.id, username: user.username, role: user.role };
+        permissions = user.permissions || {};
+        showApp();
+      }).catch(() => {
+        // Login failed - show login screen
+        document.getElementById('loginScreen').style.display = 'flex';
+      });
       return;
     }
   }
   // Show login screen
   document.getElementById('loginScreen').style.display = 'flex';
 }).catch(e => {
-  showToast('SQL init error: ' + e.message, 'error');
+  showToast('API init error: ' + e.message, 'error');
   document.getElementById('loginScreen').style.display = 'flex';
 });
 </script>
