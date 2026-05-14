@@ -2602,6 +2602,7 @@ async function openTransaksiForm(type) {
   sel.innerHTML = '<option value="">— Pilih Item —</option>' + items.map(function(i){return '<option value="'+i.id+'" data-nama="'+i.nama+'" data-satuan="'+i.satuan+'" data-harga="'+(i.price||0)+'">'+i.nama+' ('+i.satuan+') - Stok: '+i.stok+'</option>';}).join('');
   document.getElementById('tfItemsList').innerHTML = '';
   document.getElementById('tfTotal').textContent = 'Rp 0';
+  m.onclick = function(e){ if(e.target===m) m.classList.remove('show'); };
   modal.classList.add('show');
 }
 
