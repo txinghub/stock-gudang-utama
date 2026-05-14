@@ -735,14 +735,7 @@ body {
               <div class="settings-item" onclick="openPage('user')" id="settingsUserBtn"><span class="icon">👥</span> USER MANAGEMENT</div>
             </div>
           </div>
-          <div class="accordion-group" id="accFile">
-            <div class="settings-header collapsed" onclick="toggleAccordion(this)">FILE MANAGEMENT</div>
-            <div class="accordion-group collapsed">
-              <div class="settings-item" onclick="if(can('db_new')){newDatabase();toggleSettings()}" id="menuNewDB"><span class="icon">🆕</span> New</div>
-              <div class="settings-item" onclick="if(can('db_save')){saveDatabase();toggleSettings()}" id="menuSaveDB"><span class="icon">💾</span> Save</div>
-              <div class="settings-item" onclick="if(can('db_open')){openLoadDB();toggleSettings()}" id="menuOpenDB"><span class="icon">📂</span> Open</div>
-            </div>
-          </div>
+          
         </div>
       </div>
     </div>
