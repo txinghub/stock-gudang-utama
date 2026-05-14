@@ -2693,10 +2693,12 @@ async function viewTransaksi(id) {
       mv = document.createElement('div');
       mv.id = 'transaksiViewModal';
       mv.className = 'modal';
-      mv.innerHTML = '<div class="modal-content" style="max-width:480px"><div style="display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:800;letter-spacing:2px">📋 DETAIL FAKTUR</div><div onclick="document.getElementById(\'transaksiViewModal\').classList.remove(\'show\')" style="cursor:pointer;font-size:18px;opacity:0.6">✕</div></div><div id="transaksiViewBody"></div></div>';
+      mv.innerHTML = '<div class="modal-content" style="max-width:480px"><div style="display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:800;letter-spacing:2px">📋 DETAIL FAKTUR</div><div id="tvCloseBtn" style="cursor:pointer;font-size:18px;opacity:0.6">✕</div></div><div id="transaksiViewBody"></div></div>';
+      document.getElementById('tvCloseBtn').onclick = function(){ mv.classList.remove('show'); };
       document.body.appendChild(mv);
     }
     document.getElementById('transaksiViewBody').innerHTML = html;
+    mv.onclick = function(e){ if(e.target===mv) mv.classList.remove('show'); };
     mv.classList.add('show');
   } catch(e) { showToast('Gagal: '+e.message, 'error'); }
 }
