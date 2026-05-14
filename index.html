@@ -1392,7 +1392,12 @@ function goHome() {
   document.querySelector('.tab[data-filter="all"]').classList.add('active');
   currentFilter = 'all';
   document.getElementById('statFiltered').textContent = 'ALL';
-  renderCards();
+  // Re-fetch items from API before rendering
+  fetch(API_BASE + '/items').then(res => res.json()).then(data => {
+    items = data;
+    renderCards();
+    updateStats();
+  });
 }
 
 function openPage(page) {
