@@ -227,6 +227,118 @@ def add_movement():
     conn.close()
     return jsonify({'id': movement_id}), 201
 
+# ==================== TRANSAKSI API ====================
+
+@app.route('/api/transaksi', methods=['GET'])
+def get_transaksi():
+    t_type = request.args.get('type')
+    conn = get_db()
+    if t_type:
+        cur = conn.execute(
+            "SELECT * FROM transaksi WHERE type = ? ORDER BY tanggal DESC, id DESC",
+            (t_type.upper(),)
+        )
+    else:
+        cur = conn.execute("SELECT * FROM transaksi ORDER BY tanggal DESC, id DESC LIMIT 100")
+    rows = [dict_from_row(row) for row in cur.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
+@app.route('/api/transaksi/<int:transaksi_id>', methods=['GET'])
+def get_transaksi_detail(transaksi_id):
+    conn = get_db()
+    cur = conn.execute("SELECT * FROM transaksi WHERE id = ?", (transaksi_id,))
+    header = dict_from_row(cur.fetchone())
+    if not header:
+        conn.close()
+        return jsonify({'error': 'Not found'}), 404
+    cur = conn.execute("SELECT * FROM transaksi_items WHERE transaksi_id = ?", (transaksi_id,))
+    items = [dict_from_row(row) for row in cur.fetchall()]
+    conn.close()
+    header['items'] = items
+    return jsonify(header)
+
+@app.route('/api/transaksi', methods=['POST'])
+def add_transaksi():
+    data = request.json
+    conn = get_db()
+    try:
+        cur = conn.execute("""
+            INSERT INTO transaksi (no_faktur, type, tanggal, supplier, customer, total, keterangan, user, created)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        """, (
+            data.get('no_faktur', '').upper(),
+            data.get('type', '').upper(),
+            data.get('tanggal', ''),
+            data.get('supplier', '').upper(),
+            data.get('customer', '').upper(),
+            data.get('total', 0),
+            data.get('keterangan', '').upper(),
+            data.get('user', 'ADMIN')
+        ))
+        transaksi_id = cur.lastrowid
+
+        # Insert items
+        for ti in data.get('items', []):
+            conn.execute("""
+                INSERT INTO transaksi_items (transaksi_id, item_id, nama, satuan, qty, harga, subtotal)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                transaksi_id,
+                ti.get('item_id'),
+                ti.get('nama', '').upper(),
+                ti.get('satuan', '').upper(),
+                ti.get('qty', 0),
+                ti.get('harga', 0),
+                ti.get('subtotal', 0)
+            ))
+            # Update stock
+            item_id = ti.get('item_id')
+            qty = ti.get('qty', 0)
+            if data.get('type', '').upper() == 'PEMBELIAN':
+                conn.execute("UPDATE item SET stok = stok + ? WHERE id = ?", (qty, item_id))
+                # Record movement
+                conn.execute("""
+                    INSERT INTO movements (item_id, item_nama, kode, type, jumlah, satuan, tanggal, catatan)
+                    VALUES (?, ?, '', 'MASUK', ?, ?, ?, ?)
+                """, (item_id, ti.get('nama', '').upper(), qty, ti.get('satuan', '').upper(),
+                      data.get('tanggal', ''), data.get('no_faktur', '').upper()))
+            elif data.get('type', '').upper() == 'PENGIRIMAN':
+                conn.execute("UPDATE item SET stok = stok - ? WHERE id = ?", (qty, item_id))
+                conn.execute("""
+                    INSERT INTO movements (item_id, item_nama, kode, type, jumlah, satuan, tanggal, catatan)
+                    VALUES (?, ?, '', 'KELUAR', ?, ?, ?, ?)
+                """, (item_id, ti.get('nama', '').upper(), qty, ti.get('satuan', '').upper(),
+                      data.get('tanggal', ''), data.get('no_faktur', '').upper()))
+
+        conn.commit()
+        conn.close()
+        return jsonify({'id': transaksi_id}), 201
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({'error': 'No faktur sudah ada'}), 400
+
+@app.route('/api/transaksi/<int:transaksi_id>', methods=['DELETE'])
+def delete_transaksi(transaksi_id):
+    conn = get_db()
+    # Reverse stock first
+    cur = conn.execute("SELECT * FROM transaksi WHERE id = ?", (transaksi_id,))
+    t = dict_from_row(cur.fetchone())
+    if t:
+        cur = conn.execute("SELECT * FROM transaksi_items WHERE transaksi_id = ?", (transaksi_id,))
+        for ti in cur.fetchall():
+            qty = ti['qty']
+            if t['type'] == 'PEMBELIAN':
+                conn.execute("UPDATE item SET stok = stok - ? WHERE id = ?", (qty, ti['item_id']))
+            else:
+                conn.execute("UPDATE item SET stok = stok + ? WHERE id = ?", (qty, ti['item_id']))
+        conn.execute("DELETE FROM transaksi_items WHERE transaksi_id = ?", (transaksi_id,))
+        conn.execute("DELETE FROM movements WHERE catatan = ?", (t['no_faktur'],))
+    conn.execute("DELETE FROM transaksi WHERE id = ?", (transaksi_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
 # ==================== USERS API ====================
 
 @app.route('/api/login', methods=['POST'])

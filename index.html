@@ -344,6 +344,14 @@ body {
   display: block;
 }
 
+.page-transaksi {
+  display: none;
+}
+
+.page-transaksi.active {
+  display: block;
+}
+
 .page-header {
   display: flex;
   align-items: center;
@@ -715,10 +723,11 @@ body {
             </div>
           </div>
           <div class="accordion-group" id="accTrans">
-            <div class="settings-header collapsed" onclick="toggleAccordion(this)">TRANSAKSI</div>
-            <div class="accordion-group collapsed">
-              <div class="settings-item" onclick="openTransaksi('pembelian')"><span class="icon">📥</span> Faktur Pembelian</div>
-              <div class="settings-item" onclick="openTransaksi('pengiriman')"><span class="icon">📤</span> Faktur Pengiriman</div>
+            <div class="settings-header" onclick="toggleAccordion(this)">📋 TRANSAKSI</div>
+            <div class="accordion-group">
+              <div class="settings-item" onclick="openPage('transaksi')"><span class="icon">📋</span> SEMUA TRANSAKSI</div>
+              <div class="settings-item" onclick="openTransaksiForm('PEMBELIAN')"><span class="icon">🛒</span> Faktur Pembelian</div>
+              <div class="settings-item" onclick="openTransaksiForm('PENGIRIMAN')"><span class="icon">🚚</span> Faktur Pengiriman</div>
             </div>
           </div>
           <div class="accordion-group" id="accLap">
@@ -842,6 +851,28 @@ body {
       </div>
     </div>
   </div>
+
+  <!-- ===== TRANSAKSI PAGE ===== -->
+  <div id="pageTransaksi" class="main page-transaksi" style="display:none">
+    <div class="page-header" style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+      <div class="page-title" style="font-size:13px">📋 TRANSAKSI</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="openTransaksiForm('PEMBELIAN')" style="font-size:11px;padding:6px 14px">🛒 PEMBELIAN</button>
+        <button class="btn btn-ghost" onclick="openTransaksiForm('PENGIRIMAN')" style="font-size:11px;padding:6px 14px">🚚 PENGIRIMAN</button>
+      </div>
+    </div>
+
+    <!-- Transaksi filter tabs -->
+    <div style="padding:8px 16px;display:flex;gap:6px;border-bottom:1px solid var(--border)">
+      <button class="tab active" data-tfilter="all" onclick="switchTransaksiFilter(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">SEMUA</button>
+      <button class="tab" data-tfilter="PEMBELIAN" onclick="switchTransaksiFilter(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">🛒 PEMBELIAN</button>
+      <button class="tab" data-tfilter="PENGIRIMAN" onclick="switchTransaksiFilter(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">🚚 PENGIRIMAN</button>
+    </div>
+
+    <!-- Transaksi list -->
+    <div id="transaksiList" style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 220px);overflow-y:auto"></div>
+  </div>
+
 </div><!-- end mainApp -->
 
 <!-- ===== ADD/EDIT ITEM MODAL ===== -->
@@ -1403,16 +1434,18 @@ function goHome() {
 function openPage(page) {
   currentPage = page;
   document.getElementById('settingsDropdown').classList.remove('show');
-
-  if (page === 'items') {
-    goHome();
-  } else if (page === 'user') {
+  document.getElementById('pageItems').style.display = 'none';
+  document.getElementById('pageUser').classList.remove('active');
+  document.getElementById('pageTransaksi').classList.remove('active');
+  document.getElementById('mainTabs').style.display = 'none';
+  if (page === 'user') {
     if (!can('user_mgmt')) { showToast('Akses ditolak — tidak punya izin', 'error'); return; }
-    document.getElementById('pageItems').style.display = 'none';
     document.getElementById('pageUser').classList.add('active');
-    document.getElementById('mainTabs').style.display = 'none';
     renderUserTable();
     renderPermissionMatrix();
+  } else if (page === 'transaksi') {
+    document.getElementById('pageTransaksi').classList.add('active');
+    loadTransaksiList();
   }
 }
 
@@ -2457,11 +2490,220 @@ function confirmMovement() {
 /* ================================================
    TRANSAKSI (FAKTUR PEMBELIAN/PENGIRIMAN)
    ================================================ */
+let transaksiFilter = 'all';
 
-function openTransaksi(type) {
-  toggleSettings();
-  showToast('Faktur ' + (type === 'pembelian' ? 'Pembelian' : 'Pengiriman') + ' — fitur sedang dalam pengembangan', 'info');
+function switchTransaksiFilter(btn) {
+  document.querySelectorAll('[data-tfilter]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  transaksiFilter = btn.dataset.tfilter;
+  loadTransaksiList();
 }
+
+async function loadTransaksiList() {
+  const el = document.getElementById('transaksiList');
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Memuat...</div>';
+  try {
+    const url = transaksiFilter === 'all'
+      ? API_BASE + '/transaksi'
+      : API_BASE + '/transaksi?type=' + transaksiFilter;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Belum ada transaksi</div>';
+      return;
+    }
+    el.innerHTML = data.map(t => {
+      const isBeli = t.type === 'PEMBELIAN';
+      const badgeColor = isBeli ? 'var(--success)' : 'var(--danger)';
+      const badgeBg = isBeli ? 'var(--success-dim)' : 'var(--danger-dim)';
+      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer" onclick="viewTransaksi(' + t.id + ')">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text)">' + t.no_faktur + '</span>' +
+            '<span style="font-size:9px;padding:2px 8px;border-radius:4px;background:' + badgeBg + ';color:' + badgeColor + ';font-weight:700;letter-spacing:1px">' + t.type + '</span>' +
+          '</div>' +
+          '<div style="font-size:10px;color:var(--text-muted)">' + t.tanggal + '</div>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">' +
+          (isBeli ? '🏭 Supplier: ' + (t.supplier||'-') : '👤 Customer: ' + (t.customer||'-')) +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center">' +
+          '<div style="font-size:10px;color:var(--text-muted)">' + t.user + ' · ' + String(t.created||'').slice(0,16) + '</div>' +
+          '<div style="font-size:13px;font-weight:800;color:var(--accent)">Rp ' + (t.total||0).toLocaleString('id') + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Gagal memuat transaksi</div>';
+  }
+}
+
+async function openTransaksiForm(type) {
+  document.getElementById('settingsDropdown').classList.remove('show');
+  let modal = document.getElementById('transaksiFormModal');
+  if (!modal) {
+    const m = document.createElement('div');
+    m.id = 'transaksiFormModal';
+    m.className = 'modal';
+    m.innerHTML = '<div class="modal-content" style="max-width:700px;max-height:90vh;overflow-y:auto">' +
+      '<div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)">' +
+        '<div id="tfTitle" style="font-size:13px;font-weight:800;letter-spacing:2px"></div>' +
+        '<div class="modal-close" onclick="closeTransaksiForm()" style="cursor:pointer;font-size:18px;opacity:0.6">✕</div>' +
+      '</div>' +
+      '<div style="padding:16px;display:flex;flex-direction:column;gap:12px">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+          '<div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">NO. FAKTUR</div><input id="tfNoFaktur" class="form-input" placeholder="FB-001" style="width:100%"></div>' +
+          '<div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">TANGGAL</div><input id="tfTanggal" type="date" class="form-input" style="width:100%"></div>' +
+        '</div>' +
+        '<div id="tfPartyDiv">' +
+          '<div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px" id="tfPartyLabel">SUPPLIER</div>' +
+          '<input id="tfParty" class="form-input" list="tfPartyList" placeholder="Ketik atau pilih..." style="width:100%">' +
+          '<datalist id="tfPartyList"></datalist>' +
+        '</div>' +
+        '<div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">KETERANGAN</div><input id="tfKeterangan" class="form-input" placeholder="Catatan opsional..." style="width:100%"></div>' +
+        '<div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">PILIH ITEM</div>' +
+          '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">' +
+            '<select id="tfItemSelect" class="form-input" style="flex:1"><option value="">— Pilih Item —</option></select>' +
+            '<input id="tfQty" type="number" class="form-input" placeholder="Qty" value="1" min="1" style="width:80px">' +
+            '<input id="tfHarga" type="number" class="form-input" placeholder="Harga" style="width:120px">' +
+            '<button class="btn btn-ghost" onclick="addTransaksiItem()" style="padding:7px 12px;font-size:11px">＋ TAMBAH</button>' +
+          '</div>' +
+        '</div>' +
+        '<div id="tfItemsList" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto"></div>' +
+        '<div style="display:flex;justify-content:flex-end;align-items:center;padding:10px;background:var(--surface);border-radius:8px">' +
+          '<div style="font-size:11px;letter-spacing:1px;color:var(--text-muted);margin-right:12px">TOTAL</div>' +
+          '<div id="tfTotal" style="font-size:18px;font-weight:800;color:var(--accent)">Rp 0</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;padding-top:8px">' +
+          '<button class="btn btn-ghost" onclick="closeTransaksiForm()">BATAL</button>' +
+          '<button class="btn btn-primary" onclick="submitTransaksi()">💾 SIMPAN FAKTUR</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+    document.body.appendChild(m);
+    modal = m;
+  }
+  window.tfType = type;
+  window.tfItems = [];
+  document.getElementById('tfTitle').textContent = type === 'PEMBELIAN' ? '🛒 FAKTUR PEMBELIAN' : '🚚 FAKTUR PENGIRIMAN';
+  document.getElementById('tfTanggal').value = new Date().toISOString().split('T')[0];
+  document.getElementById('tfNoFaktur').value = '';
+  document.getElementById('tfKeterangan').value = '';
+  if (type === 'PEMBELIAN') {
+    document.getElementById('tfPartyLabel').textContent = 'SUPPLIER';
+    document.getElementById('tfParty').placeholder = 'Ketik atau pilih supplier...';
+    document.getElementById('tfPartyList').innerHTML = (window.settings.supplier||[]).map(function(s){return '<option value="'+s+'">';}).join('');
+  } else {
+    document.getElementById('tfPartyLabel').textContent = 'CUSTOMER';
+    document.getElementById('tfParty').placeholder = 'Ketik atau pilih customer...';
+    document.getElementById('tfPartyList').innerHTML = (window.settings.customer||[]).map(function(s){return '<option value="'+s+'">';}).join('');
+  }
+  const sel = document.getElementById('tfItemSelect');
+  sel.innerHTML = '<option value="">— Pilih Item —</option>' + items.map(function(i){return '<option value="'+i.id+'" data-nama="'+i.nama+'" data-satuan="'+i.satuan+'" data-harga="'+(i.price||0)+'">'+i.nama+' ('+i.satuan+') - Stok: '+i.stok+'</option>';}).join('');
+  document.getElementById('tfItemsList').innerHTML = '';
+  document.getElementById('tfTotal').textContent = 'Rp 0';
+  modal.classList.add('show');
+}
+
+function addTransaksiItem() {
+  const sel = document.getElementById('tfItemSelect');
+  const opt = sel.options[sel.selectedIndex];
+  if (!sel.value) { showToast('Pilih item dulu', 'error'); return; }
+  const qty = parseInt(document.getElementById('tfQty').value) || 0;
+  const harga = parseFloat(document.getElementById('tfHarga').value) || 0;
+  if (qty <= 0) { showToast('Qty harus lebih dari 0', 'error'); return; }
+  const item = { item_id: parseInt(sel.value), nama: opt.dataset.nama, satuan: opt.dataset.satuan, qty: qty, harga: harga, subtotal: qty * harga };
+  const exist = window.tfItems.findIndex(function(i){return i.item_id === item.item_id;});
+  if (exist >= 0) {
+    window.tfItems[exist].qty += qty;
+    window.tfItems[exist].subtotal = window.tfItems[exist].qty * window.tfItems[exist].harga;
+  } else {
+    window.tfItems.push(item);
+  }
+  renderTfItems();
+  sel.value = '';
+  document.getElementById('tfQty').value = '1';
+  document.getElementById('tfHarga').value = '';
+}
+
+function renderTfItems() {
+  const el = document.getElementById('tfItemsList');
+  el.innerHTML = window.tfItems.map(function(it, idx) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface);border-radius:6px;font-size:11px">' +
+      '<div><span style="font-weight:700">'+it.nama+'</span> <span style="color:var(--text-muted)">'+it.qty+'x'+it.satuan+'</span></div>' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<div style="color:var(--accent)">Rp '+it.subtotal.toLocaleString('id')+'</div>' +
+        '<button onclick="removeTfItem('+idx+')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px">✕</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  var total = window.tfItems.reduce(function(s,i){return s+i.subtotal;}, 0);
+  document.getElementById('tfTotal').textContent = 'Rp ' + total.toLocaleString('id');
+}
+
+function removeTfItem(idx) { window.tfItems.splice(idx, 1); renderTfItems(); }
+
+function closeTransaksiForm() { document.getElementById('transaksiFormModal').classList.remove('show'); }
+
+async function submitTransaksi() {
+  var noFaktur = document.getElementById('tfNoFaktur').value.trim();
+  var tanggal = document.getElementById('tfTanggal').value;
+  var party = document.getElementById('tfParty').value.trim();
+  var keterangan = document.getElementById('tfKeterangan').value.trim();
+  if (!noFaktur) { showToast('No. Faktur wajib diisi', 'error'); return; }
+  if (!tanggal) { showToast('Tanggal wajib diisi', 'error'); return; }
+  if (!window.tfItems.length) { showToast('Tambah minimal 1 item', 'error'); return; }
+  var total = window.tfItems.reduce(function(s,i){return s+i.subtotal;}, 0);
+  var payload = {
+    no_faktur: noFaktur, type: window.tfType, tanggal: tanggal,
+    supplier: window.tfType === 'PEMBELIAN' ? party : '',
+    customer: window.tfType === 'PENGIRIMAN' ? party : '',
+    keterangan: keterangan, user: currentUser ? currentUser.username : 'ADMIN',
+    items: window.tfItems, total: total
+  };
+  try {
+    var res = await fetch(API_BASE + '/transaksi', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if (!res.ok) { var err = await res.json(); showToast(err.error||'Gagal simpan','error'); return; }
+    showToast('Faktur berhasil disimpan!', 'success');
+    closeTransaksiForm();
+    var r = await fetch(API_BASE + '/items'); items = await r.json();
+    renderCards(); updateStats();
+    if (document.getElementById('pageTransaksi').classList.contains('active')) loadTransaksiList();
+  } catch(e) { showToast('Gagal: '+e.message, 'error'); }
+}
+
+async function viewTransaksi(id) {
+  try {
+    var res = await fetch(API_BASE + '/transaksi/' + id);
+    var t = await res.json();
+    var isBeli = t.type === 'PEMBELIAN';
+    var itemsHtml = (t.items||[]).map(function(it){return '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--surface);border-radius:6px;font-size:11px"><div><span style="font-weight:700">'+it.nama+'</span> '+it.qty+'x'+it.satuan+'</div><div style="color:var(--accent)">Rp '+it.subtotal.toLocaleString('id')+'</div></div>';}).join('');
+    var html = '<div style="padding:20px;display:flex;flex-direction:column;gap:12px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+        '<div><div style="font-size:14px;font-weight:800;letter-spacing:2px">'+t.no_faktur+'</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">'+t.tanggal+' · '+t.user+'</div></div>' +
+        '<div style="font-size:11px;padding:3px 10px;border-radius:4px;background:'+(isBeli?'var(--success-dim)':'var(--danger-dim)')+';color:'+(isBeli?'var(--success)':'var(--danger)')+';font-weight:700">'+t.type+'</div>' +
+      '</div>' +
+      '<div style="font-size:11px;background:var(--surface);padding:10px;border-radius:6px"><div style="color:var(--text-muted);margin-bottom:2px">'+(isBeli?'SUPPLIER':'CUSTOMER')+'</div><div style="font-weight:700">'+(isBeli?(t.supplier||'-'):(t.customer||'-'))+'</div></div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px">'+itemsHtml+'</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--accent-dim);border-radius:8px"><div style="font-size:11px;letter-spacing:1px;font-weight:700">TOTAL</div><div style="font-size:18px;font-weight:800;color:var(--accent)">Rp '+(t.total||0).toLocaleString('id')+'</div></div>' +
+      (t.keterangan?'<div style="font-size:10px;color:var(--text-muted)">'+t.keterangan+'</div>':'') +
+    '</div>';
+    var mv = document.getElementById('transaksiViewModal');
+    if (!mv) {
+      mv = document.createElement('div');
+      mv.id = 'transaksiViewModal';
+      mv.className = 'modal';
+      mv.innerHTML = '<div class="modal-content" style="max-width:480px"><div style="display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:800;letter-spacing:2px">📋 DETAIL FAKTUR</div><div onclick="document.getElementById(\'transaksiViewModal\').classList.remove(\'show\')" style="cursor:pointer;font-size:18px;opacity:0.6">✕</div></div><div id="transaksiViewBody"></div></div>';
+      document.body.appendChild(mv);
+    }
+    document.getElementById('transaksiViewBody').innerHTML = html;
+    mv.classList.add('show');
+  } catch(e) { showToast('Gagal: '+e.message, 'error'); }
+}
+
+/* ================================================
+   REPORTS
+   ================================================ */
 let currentReportType = 'masuk';
 let currentReportData = { masuk: [], keluar: [] };
 
