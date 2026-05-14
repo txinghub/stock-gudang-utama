@@ -1175,9 +1175,10 @@ async function initAPI() {
     const data = await res.json();
     settings = { lokasi:[], kota:[], customer:[], supplier:[], satuan:[], kategori:[] };
     data.forEach(row => {
-      if (!settings[row.type]) settings[row.type] = [];
+      const type = (row.type||'').toLowerCase();
+      if (!settings[type]) settings[type] = [];
       const upperVal = (row.value||'').toUpperCase();
-      if (!settings[row.type].includes(upperVal)) settings[row.type].push(upperVal);
+      if (!settings[type].includes(upperVal)) settings[type].push(upperVal);
       // Cache ID for reverse lookup
       window.settingsIdMap[row.type + '_' + upperVal] = row.id;
     });
@@ -2260,10 +2261,11 @@ function loadFromDB() {
     settings = { lokasi:[], kota:[], customer:[], supplier:[], satuan:[], kategori:[] };
     while (stmt.step()) {
       const r = stmt.getAsObject();
-      if (!settings[r.type]) settings[r.type] = [];
+      const type = (r.type||'').toLowerCase();
+      if (!settings[type]) settings[type] = [];
       // Normalize to uppercase on load to match addSetting behavior
       const upperVal = (r.value||'').toUpperCase();
-      if (!settings[r.type].includes(upperVal)) settings[r.type].push(upperVal);
+      if (!settings[type].includes(upperVal)) settings[type].push(upperVal);
     }
     stmt.free();
 

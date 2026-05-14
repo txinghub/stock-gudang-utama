@@ -70,7 +70,7 @@ def add_item():
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         data.get('kategori', '').upper(),
-        data.get('item', '').upper(),
+        data.get('nama', '').upper(),
         data.get('satuan', '').upper(),
         data.get('lokasi', '').upper(),
         data.get('stok', 0),
@@ -97,7 +97,7 @@ def update_item(item_id):
         WHERE id = ?
     """, (
         data.get('kategori', '').upper(),
-        data.get('item', '').upper(),
+        data.get('nama', '').upper(),
         data.get('satuan', '').upper(),
         data.get('lokasi', '').upper(),
         data.get('stok', 0),
