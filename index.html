@@ -1966,6 +1966,8 @@ function addSetting() {
   saveSettings();
   renderSettingsList();
   populateDropdowns(); // refresh datalist in item form
+  // Also refresh KAT filter dropdown if adding kategori
+  if (currentSettingType === 'kategori') populateKatFilter();
   // Sync localStorage settings array to match DB behavior (uppercase only)
   syncSettingsUppercase();
 }
