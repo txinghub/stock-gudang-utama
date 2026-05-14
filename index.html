@@ -2030,10 +2030,16 @@ function addSetting() {
     body: JSON.stringify({ type: currentSettingType, value: val })
   }).then(res => {
     if (!res.ok) throw new Error('API error');
+    return res.json();
+  }).then(data => {
+    // Add ID to settingsIdMap for future edit/delete lookups
+    if (data.id && window.settingsIdMap) {
+      window.settingsIdMap[currentSettingType + '_' + val] = data.id;
+    }
     // Add locally only after API success
     settings[currentSettingType].push(val);
     settings[currentSettingType].sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()));
-    input.value = '';
+    document.getElementById('newSettingValue').value = '';
     showToast('Data berhasil ditambahkan!', 'success');
     renderSettingsList();
     populateDropdowns(); // refresh datalist in item form
@@ -2104,6 +2110,10 @@ function openEditSetting(idx) {
   const item = settings[currentSettingType][idx];
   if (!label || !item) return;
 
+  // Store original value in label data attribute for rollback
+  label.setAttribute('data-original', item);
+  label.setAttribute('data-idx', idx);
+
   // Replace label with input
   label.outerHTML = `<input id="setting-edit-${idx}" class="form-control" style="flex:1;min-width:0;font-size:13px;padding:4px 8px;height:auto" value="${item}" onkeydown="if(event.key==='Enter')saveEditSetting(${idx});if(event.key==='Escape')cancelEditSetting(${idx})">`;
 
@@ -2116,24 +2126,31 @@ function openEditSetting(idx) {
 
 function saveEditSetting(idx) {
   const input = document.getElementById('setting-edit-' + idx);
+  const label = document.querySelector(`[data-idx='${idx}']`);
   if (!input) return;
   const newVal = input.value.trim().toUpperCase();
   const oldVal = settings[currentSettingType][idx];
   if (!newVal) { showToast('Data tidak boleh kosong!', 'error'); return; }
   if (newVal !== oldVal) {
-    // Case-insensitive duplicate check (exclude current item)
     const dup = settings[currentSettingType].some((v, i) => i !== idx && v.toUpperCase() === newVal);
     if (dup) { showToast('Data sudah ada!', 'error'); return; }
   }
-  // Update via API - use settings id from API data
-  const settingId = getSettingId(currentSettingType, oldVal);
-  if (!settingId) { showToast('Gagal找到数据!', 'error'); return; }
+
+  // Get API ID from settingsIdMap
+  const settingId = window.settingsIdMap && window.settingsIdMap[currentSettingType + '_' + oldVal.toUpperCase()];
+  if (!settingId) { showToast('Gagal menemukan data!', 'error'); return; }
+
   fetch(API_BASE + '/settings/' + settingId, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ value: newVal })
   }).then(res => {
     if (!res.ok) throw new Error('API error');
+    // Update settingsIdMap with new key
+    if (window.settingsIdMap) {
+      delete window.settingsIdMap[currentSettingType + '_' + oldVal.toUpperCase()];
+      window.settingsIdMap[currentSettingType + '_' + newVal] = settingId;
+    }
     settings[currentSettingType][idx] = newVal;
     settings[currentSettingType].sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()));
     renderSettingsList();
@@ -2146,9 +2163,8 @@ function saveEditSetting(idx) {
 }
 
 function getSettingId(type, value) {
-  // Reverse lookup from initAPI cached data - we need to track API IDs
-  const key = type + '_' + value.toUpperCase();
-  return settingsIdMap ? settingsIdMap[key] : null;
+  if (!window.settingsIdMap) return null;
+  return window.settingsIdMap[type + '_' + value.toUpperCase()] || null;
 }
 
 function cancelEditSetting(idx) {
@@ -2156,11 +2172,19 @@ function cancelEditSetting(idx) {
 }
 
 function openDeleteSetting(idx) {
-  deleteTarget = idx; deleteType = 'setting';
-  document.getElementById('deleteMsg').textContent = 'Yakin hapus data ini?';
-  document.getElementById('deleteItemName').textContent = (settings[currentSettingType]||[])[idx] || '—';
-  document.getElementById('deleteModal').classList.add('show');
-  // Don't close settings modal — delete confirmation shows on top
+  const item = (settings[currentSettingType]||[])[idx];
+  if (!item) return;
+  const settingId = window.settingsIdMap && window.settingsIdMap[currentSettingType + '_' + item.toUpperCase()];
+  if (!settingId) { showToast('Gagal menemukan data!', 'error'); return; }
+  if (!confirm('Yakin hapus: ' + item + '?')) return;
+  fetch(API_BASE + '/settings/' + settingId, { method: 'DELETE' })
+    .then(res => {
+      if (!res.ok) throw new Error('API error');
+      if (window.settingsIdMap) delete window.settingsIdMap[currentSettingType + '_' + item.toUpperCase()];
+      settings[currentSettingType].splice(idx, 1);
+      renderSettingsList();
+      showToast('Data berhasil dihapus!', 'success');
+    }).catch(e => { showToast('Gagal menghapus data!', 'error'); });
 }
 
 /* ================================================
