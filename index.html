@@ -1976,20 +1976,23 @@ function closeDeleteModal() { document.getElementById('deleteModal').classList.r
 function confirmDelete() {
   if (deleteType === 'item' && deleteTarget) {
     if (!can('item_delete')) { showToast('Akses ditolak', 'error'); return; }
-    items = items.filter(i => i.id !== deleteTarget);
-    showToast('Item berhasil dihapus!', 'success');
-    saveToDB();
-    closeDetailModal(); // Close detail modal first
-    renderCards();
-    updateStats();
+    // Call API to delete from database
+    fetch(API_BASE + '/items/' + deleteTarget, { method: 'DELETE' }).then(() => {
+      items = items.filter(i => i.id !== deleteTarget);
+      showToast('Item berhasil dihapus!', 'success');
+      closeDetailModal(); // Close detail modal first
+      renderCards();
+      updateStats();
+    });
   } else if (deleteType === 'user' && deleteTarget) {
     if (users.length <= 1) { showToast('Minimal harus ada 1 user!', 'error'); return; }
-    users = users.filter(u => u.id !== deleteTarget);
-    showToast('User berhasil dihapus!', 'success');
-    saveToDB();
-    renderUserTable();
-    updateLoginUserList();
-    renderUserSwitchList();
+    fetch(API_BASE + '/users/' + deleteTarget, { method: 'DELETE' }).then(() => {
+      users = users.filter(u => u.id !== deleteTarget);
+      showToast('User berhasil dihapus!', 'success');
+      renderUserTable();
+      updateLoginUserList();
+      renderUserSwitchList();
+    });
   } else if (deleteType === 'setting' && deleteTarget !== null) {
     // Get value before splicing for API ID lookup
     const valToDelete = (settings[currentSettingType]||[])[deleteTarget];
