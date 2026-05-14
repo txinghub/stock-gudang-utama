@@ -2688,20 +2688,9 @@ initAPI().then(() => {
   if (savedUser && savedUser !== '__LOGGING_OUT__') {
     const u = users.find(x => x.username === savedUser);
     if (u) {
-      // Re-authenticate via API to get fresh permissions
-      fetch(API_BASE + '/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u.username, password: '' })
-      }).then(res => res.json()).then(user => {
-        currentUser = { id: user.id, username: user.username, role: user.role };
-        permissions = user.permissions || {};
-        showApp();
-      }).catch(() => {
-        // Login failed - show login screen
-        document.getElementById('loginScreen').style.display = 'flex';
-      });
-      return;
+      // Pre-fill username but require password entry on reload
+      document.getElementById('loginUsername').value = savedUser;
+      onUserSelect(savedUser);
     }
   }
   // Show login screen
