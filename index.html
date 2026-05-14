@@ -1161,29 +1161,37 @@ const DEFAULT_PERMS = {
 };
 
 /* ================================================
-   INIT SQL
+   INIT API MODE (Flask Backend)
    ================================================ */
-async function initSQL() {
-  SQL = await initSqlJs({
-    locateFile: file => `${window.location.origin}/${file}`
-  });
-  // Try to load saved DB
-  const saved = localStorage.getItem('stockgudang_db');
-  if (saved) {
-    try {
-      const data = Uint8Array.from(atob(saved), c => c.charCodeAt(0));
-      db = new SQL.Database(data);
-      loadFromDB();
-    } catch(e) { console.warn('DB load failed', e); }
-  }
-  // Init default users if none exist
-  if (users.length === 0) {
-    users = [
-      { id: 1, username: 'admin', password: 'syncmaster740', role: 'admin', created: new Date().toISOString(), lastLogin: null },
-    ];
-    permissions = JSON.parse(JSON.stringify(DEFAULT_PERMS));
-    saveToDB();
-  }
+const API_BASE = window.location.origin + '/api';
+
+async function initAPI() {
+  // Load settings from API
+  try {
+    const res = await fetch(API_BASE + '/settings');
+    const data = await res.json();
+    settings = { lokasi:[], kota:[], customer:[], supplier:[], satuan:[], kategori:[] };
+    data.forEach(row => {
+      if (!settings[row.type]) settings[row.type] = [];
+      const upperVal = (row.value||'').toUpperCase();
+      if (!settings[row.type].includes(upperVal)) settings[row.type].push(upperVal);
+    });
+    syncSettingsUppercase();
+  } catch(e) { console.warn('Settings load failed', e); }
+
+  // Load items from API
+  try {
+    const res = await fetch(API_BASE + '/items');
+    items = await res.json();
+  } catch(e) { console.warn('Items load failed', e); }
+
+  // Load users from API
+  try {
+    const res = await fetch(API_BASE + '/users');
+    users = await res.json();
+  } catch(e) { console.warn('Users load failed', e); }
+
+  // Load permissions for current user after login
   updateLoginUserList();
 }
 
@@ -1223,39 +1231,41 @@ function onUserSelect(username) {
   }
 }
 
-function doLogin(e) {
+async function doLogin(e) {
   e.preventDefault();
-  const username = document.getElementById('loginUsername').value;
+  const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value;
-  const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
   const err = document.getElementById('loginError');
 
-  if (!user) {
-    err.textContent = 'USER TIDAK DITEMUKAN'; err.style.display = 'block'; return;
-  }
-  // HARD RESET: if password is "RESET" clear all stored data and re-init
-  if (password === 'RESET') {
-    localStorage.removeItem('stockgudang_db');
-    localStorage.removeItem('stockgudang_lastuser');
-    location.reload();
-    return;
-  }
+  if (!username) { err.textContent = 'USERNAME WAJIB DIISI'; err.style.display = 'block'; return; }
+  if (!password) { err.textContent = 'PASSWORD WAJIB DIISI'; err.style.display = 'block'; return; }
 
-  if (user.password.toLowerCase() !== password.toLowerCase()) {
-    const errEl = document.getElementById('loginError');
-    const dbgEl = document.getElementById('loginDebug');
-    errEl.textContent = 'PASSWORD SALAH';
-    errEl.style.display = 'block';
-    dbgEl.textContent = `stored="${user.password}" vs entered="${password}"`;
-    dbgEl.style.display = 'block';
-    return;
-  }
+  // Login via API
+  try {
+    const res = await fetch(API_BASE + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
 
-  err.style.display = 'none';
-  user.lastLogin = new Date().toISOString();
-  currentUser = { id: user.id, username: user.username, role: user.role };
-  saveToDB();
-  showApp();
+    if (!res.ok) {
+      const data = await res.json();
+      err.textContent = data.error || 'LOGIN GAGAL';
+      err.style.display = 'block';
+      return;
+    }
+
+    const user = await res.json();
+    err.style.display = 'none';
+    
+    currentUser = { id: user.id, username: user.username, role: user.role };
+    permissions = user.permissions || {};
+    localStorage.setItem('stockgudang_lastuser', username);
+    showApp();
+  } catch(e) {
+    err.textContent = 'GAGAL KONEKSI KE SERVER';
+    err.style.display = 'block';
+  }
 }
 
 function doLogout() {
@@ -1528,12 +1538,19 @@ function saveUser(e) {
     if (users.find(u => u.username === username)) {
       showToast('Username sudah ada!', 'error'); return;
     }
-    users.push({ id: Date.now(), username, password, role, created: new Date().toISOString(), lastLogin: null });
+    // Add via API
+    fetch(API_BASE + '/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, role })
+    }).then(res => res.json()).then((result) => {
+      users.push({ id: result.id, username, password, role, created: new Date().toISOString(), lastLogin: null });
+      showToast('User berhasil ditambahkan!', 'success');
+    });
     showToast('User berhasil ditambahkan!', 'success');
   }
 
   closeUserModal();
-  saveToDB();
   renderUserTable();
   updateLoginUserList();
   renderUserSwitchList();
@@ -1812,16 +1829,31 @@ function saveItem(e) {
   }
 
   if (editingItemId) {
-    const idx = items.findIndex(i => i.id === editingItemId);
-    if (idx >= 0) items[idx] = { ...items[idx], ...data };
+    // Update via API
+    fetch(API_BASE + '/items/' + editingItemId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(() => {
+      const idx = items.findIndex(i => i.id === editingItemId);
+      if (idx >= 0) items[idx] = { ...items[idx], ...data };
+      showToast('Item berhasil diupdate!', 'success');
+    });
     showToast('Item berhasil diupdate!', 'success');
   } else {
-    data.id = Date.now();
-    items.push(data);
+    // Add via API
+    fetch(API_BASE + '/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(res => res.json()).then((result) => {
+      data.id = result.id;
+      items.push(data);
+      showToast('Item berhasil ditambahkan!', 'success');
+    });
     showToast('Item berhasil ditambahkan!', 'success');
   }
   closeItemModal();
-  saveToDB();
   renderCards();
   updateStats();
 }
@@ -2530,7 +2562,7 @@ function addMovement(item, type, jumlah, catatan) {
 /* ================================================
    INIT
    ================================================ */
-initSQL().then(() => {
+initAPI().then(() => {
   // Check if already logged in
   const savedUser = localStorage.getItem('stockgudang_lastuser');
   if (savedUser) {
@@ -2543,19 +2575,10 @@ initSQL().then(() => {
   }
   // Show login screen
   document.getElementById('loginScreen').style.display = 'flex';
-  updateDBBadge(!!localStorage.getItem('stockgudang_db'));
 }).catch(e => {
   showToast('SQL init error: ' + e.message, 'error');
   document.getElementById('loginScreen').style.display = 'flex';
 });
-
-// Save last user on login
-const origDoLogin = doLogin;
-doLogin = function(e) {
-  const username = document.getElementById('loginUsername').value;
-  origDoLogin(e);
-  if (currentUser) localStorage.setItem('stockgudang_lastuser', username);
-};
 </script>
 
 </body>
