@@ -241,6 +241,9 @@ def get_transaksi():
     else:
         cur = conn.execute("SELECT * FROM transaksi ORDER BY tanggal DESC, id DESC LIMIT 100")
     rows = [dict_from_row(row) for row in cur.fetchall()]
+    for r in rows:
+        ci = conn.execute("SELECT COUNT(*) as c FROM transaksi_items WHERE transaksi_id = ?", (r['id'],)).fetchone()
+        r['items_count'] = ci['c'] if ci else 0
     conn.close()
     return jsonify(rows)
 
