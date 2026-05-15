@@ -2544,7 +2544,7 @@ async function openTransaksiForm(type) {
   if (!modal) {
     const m = document.createElement('div');
     m.id = 'transaksiFormModal';
-    m.className = 'modal';
+    m.className = 'modal-overlay';
     m.innerHTML = '<div class="modal-content" style="max-width:700px;max-height:90vh;overflow-y:auto">' +
       '<div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)">' +
         '<div id="tfTitle" style="font-size:13px;font-weight:800;letter-spacing:2px"></div>' +
