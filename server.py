@@ -397,6 +397,23 @@ def get_user(username):
     conn.close()
     return jsonify(user) if user else jsonify({'error': 'Not found'}), 404
 
+@app.route('/api/users/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    conn = get_db()
+    cur = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    deleted = cur.rowcount
+    conn.close()
+    if deleted == 0:
+        return jsonify({'error': 'User tidak ditemukan'}), 404
+    return jsonify({'ok': True, 'deleted': deleted})
+def get_user(username):
+    conn = get_db()
+    cur = conn.execute("SELECT * FROM users WHERE username = ?", (username,))
+    user = dict_from_row(cur.fetchone())
+    conn.close()
+    return jsonify(user) if user else jsonify({'error': 'Not found'}), 404
+
 @app.route('/api/users', methods=['POST'])
 def add_user():
     data = request.json
