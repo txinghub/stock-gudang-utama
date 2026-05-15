@@ -2504,7 +2504,7 @@ async function loadTransaksiList() {
     const url = transaksiFilter === 'all'
       ? API_BASE + '/transaksi'
       : API_BASE + '/transaksi?type=' + transaksiFilter;
-    console.log('Fetching:', url);
+    console.log('Fetching transaksi:', url, '| filter:', transaksiFilter);
     const res = await fetch(url);
     console.log('Response status:', res.status);
     const data = await res.json();
