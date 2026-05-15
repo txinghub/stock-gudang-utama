@@ -1124,9 +1124,6 @@ body {
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- SQL.JS (local) -->
-<script src="sql-wasm.min.js"></script>
-
 <script>
 /* ================================================
    STOCK GUDANG UTAMA — App Logic v1.1
@@ -2501,13 +2498,17 @@ function switchTransaksiFilter(btn) {
 
 async function loadTransaksiList() {
   const el = document.getElementById('transaksiList');
+  if (!el) { console.error('transaksiList element not found'); return; }
   el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Memuat...</div>';
   try {
     const url = transaksiFilter === 'all'
       ? API_BASE + '/transaksi'
       : API_BASE + '/transaksi?type=' + transaksiFilter;
+    console.log('Fetching:', url);
     const res = await fetch(url);
+    console.log('Response status:', res.status);
     const data = await res.json();
+    console.log('Data received:', data.length, 'items');
     if (!data.length) {
       el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Belum ada transaksi</div>';
       return;
@@ -2524,14 +2525,14 @@ async function loadTransaksiList() {
           '</div>' +
           '<div style="font-size:10px;color:var(--text-muted)">' + t.tanggal + '</div>' +
         '</div>' +
-'<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">' +
+        '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">' +
           (isBeli ? '🏭 Supplier: ' + (t.supplier||'-') : '👤 Customer: ' + (t.customer||'-')) +
         '</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center">' +
           '<div style="font-size:10px;color:var(--text-muted)">' + t.user + ' · ' + String(t.created||'').slice(0,16) + '</div>' +
           '<div style="font-size:11px;color:var(--text-muted)">' + (t.items_count || 0) + ' item' + '</div>' +
-        '</div>
-      </div>';
+        '</div>' +
+      '</div>' + ';' + '\n';
     }).join('');
   } catch(e) {
     el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Gagal memuat transaksi</div>';
@@ -2608,7 +2609,6 @@ async function openTransaksiForm(type) {
   sel.innerHTML = '<option value="">— Pilih Item —</option>' + items.map(function(i){return '<option value="'+i.id+'" data-nama="'+i.nama+'" data-satuan="'+i.satuan+'" data-harga="'+(i.price||0)+'">'+i.nama+' ('+i.satuan+') - Stok: '+i.stok+'</option>';}).join('');
   document.getElementById('tfItemsList').innerHTML = '';
   document.getElementById('tfTotal').textContent = 'Rp 0';
-  m.onclick = function(e){ if(e.target===m) m.classList.remove('show'); };
   document.getElementById('transaksiFormCloseBtn').onclick = function(){ m.classList.remove('show'); };
   m.classList.add('show');
   } catch(e) { console.error('openTransaksiForm error:', e); }
@@ -2698,7 +2698,6 @@ async function viewTransaksi(id) {
       mv.innerHTML = '<div class="modal-content" style="max-width:480px"><div style="display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:800;letter-spacing:2px">📋 DETAIL FAKTUR</div><div id="tvCloseBtn" style="cursor:pointer;font-size:18px;opacity:0.6">✕</div></div><div id="transaksiViewBody"></div></div>';
       document.body.appendChild(mv);
       document.getElementById('tvCloseBtn').onclick = function(){ mv.classList.remove('show'); };
-      mv.onclick = function(e){ if(e.target===mv) mv.classList.remove('show'); };
       mv.classList.add('show');
     }
     document.getElementById('transaksiViewBody').innerHTML = html;
