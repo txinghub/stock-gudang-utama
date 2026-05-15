@@ -2563,7 +2563,7 @@ function buildReportPage(header, subtitle, rows, allData) {
     background:#fff;
     color:#1a1a1a;
     font-family:Arial,Helvetica,sans-serif;
-    font-size:10px;
+    font-size:11px;
     padding:15mm;
     box-sizing:border-box;
     display:flex;
@@ -2573,9 +2573,9 @@ function buildReportPage(header, subtitle, rows, allData) {
 
   // Company / Title block — header always same, subtitle varies
   html += `<div style="text-align:center;border-bottom:2px solid #333;padding-bottom:6px;margin-bottom:4px">
-    <div style="font-size:16px;font-weight:bold;letter-spacing:3px;text-transform:uppercase">${header}</div>
-    <div style="font-size:11px;color:#555;margin-top:2px">${subtitle}</div>
-    <div style="font-size:9px;color:#888">Dicetak: ${today}</div>
+    <div style="font-size:20px;font-weight:bold;letter-spacing:3px;text-transform:uppercase">${header}</div>
+    <div style="font-size:14px;color:#555;margin-top:4px;font-weight:bold">${subtitle}</div>
+    <div style="font-size:11px;color:#888;margin-top:2px">Dicetak: ${today}</div>
   </div>`;
 
   // Summary stats — show full 3-box for "all", single box for filtered
@@ -2583,48 +2583,48 @@ function buildReportPage(header, subtitle, rows, allData) {
   if (isSemua) {
     const beli = allData.filter(t => t.type === 'PEMBELIAN').length;
     const kirim = allData.filter(t => t.type === 'PENGIRIMAN').length;
-    html += `<div style="display:flex;gap:8px;margin-bottom:2px">
-      <div style="flex:1;border:1px solid #333;padding:4px 6px;text-align:center">
-        <div style="font-size:16px;font-weight:bold">${allData.length}</div>
-        <div style="font-size:8px;color:#555">TOTAL TRANSAKSI</div>
+    html += `<div style="display:flex;gap:8px;margin-bottom:4px">
+      <div style="flex:1;border:1px solid #333;padding:6px 8px;text-align:center">
+        <div style="font-size:20px;font-weight:bold">${allData.length}</div>
+        <div style="font-size:10px;color:#555">TOTAL TRANSAKSI</div>
       </div>
-      <div style="flex:1;border:1px solid #333;padding:4px 6px;text-align:center;background:#e8f5e9">
-        <div style="font-size:16px;font-weight:bold;color:#2e7d32">${beli}</div>
-        <div style="font-size:8px;color:#555">PEMBELIAN</div>
+      <div style="flex:1;border:1px solid #333;padding:6px 8px;text-align:center;background:#e8f5e9">
+        <div style="font-size:20px;font-weight:bold;color:#2e7d32">${beli}</div>
+        <div style="font-size:10px;color:#555">PEMBELIAN</div>
       </div>
-      <div style="flex:1;border:1px solid #333;padding:4px 6px;text-align:center;background:#ffebee">
-        <div style="font-size:16px;font-weight:bold;color:#c62828">${kirim}</div>
-        <div style="font-size:8px;color:#555">PENGIRIMAN</div>
+      <div style="flex:1;border:1px solid #333;padding:6px 8px;text-align:center;background:#ffebee">
+        <div style="font-size:20px;font-weight:bold;color:#c62828">${kirim}</div>
+        <div style="font-size:10px;color:#555">PENGIRIMAN</div>
       </div>
     </div>`;
   } else {
     // For single-type pages, show count of that type
     const cnt = rows.length;
     const isBeli = subtitle.includes('MASUKAN');
-    html += `<div style="display:flex;gap:8px;margin-bottom:2px">
-      <div style="flex:1;border:1px solid ${isBeli ? '#2e7d32' : '#c62828'};padding:4px 6px;text-align:center;background:${isBeli ? '#e8f5e9' : '#ffebee'}">
-        <div style="font-size:16px;font-weight:bold;color:${isBeli ? '#2e7d32' : '#c62828'}">${cnt}</div>
-        <div style="font-size:8px;color:#555">${isBeli ? 'PEMBELIAN' : 'PENGIRIMAN'}</div>
+    html += `<div style="display:flex;gap:8px;margin-bottom:4px">
+      <div style="flex:1;border:1px solid ${isBeli ? '#2e7d32' : '#c62828'};padding:6px 8px;text-align:center;background:${isBeli ? '#e8f5e9' : '#ffebee'}">
+        <div style="font-size:20px;font-weight:bold;color:${isBeli ? '#2e7d32' : '#c62828'}">${cnt}</div>
+        <div style="font-size:10px;color:#555">${isBeli ? 'PEMBELIAN' : 'PENGIRIMAN'}</div>
       </div>
     </div>`;
   }
 
   // Table header
-  html += `<table style="width:100%;border-collapse:collapse;font-size:9px;margin-top:4px">
+  html += `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px">
     <thead>
       <tr style="background:#333;color:#fff">
-        <th style="padding:4px 5px;text-align:left;border:1px solid #222;width:28mm">NO.FAKTUR</th>
-        <th style="padding:4px 5px;text-align:center;border:1px solid #222;width:22mm">TANGGAL</th>
-        <th style="padding:4px 5px;text-align:left;border:1px solid #222;width:35mm">SUPPLIER/CUSTOMER</th>
-        <th style="padding:4px 5px;text-align:center;border:1px solid #222;width:22mm">JENIS</th>
-        <th style="padding:4px 5px;text-align:center;border:1px solid #222;width:20mm">ITEMS</th>
-        <th style="padding:4px 5px;text-align:center;border:1px solid #222;width:28mm">PETUGAS</th>
+        <th style="padding:5px 6px;text-align:left;border:1px solid #222;width:28mm;font-size:10px">NO.FAKTUR</th>
+        <th style="padding:5px 6px;text-align:center;border:1px solid #222;width:22mm;font-size:10px">TANGGAL</th>
+        <th style="padding:5px 6px;text-align:left;border:1px solid #222;width:35mm;font-size:10px">SUPPLIER/CUSTOMER</th>
+        <th style="padding:5px 6px;text-align:center;border:1px solid #222;width:22mm;font-size:10px">JENIS</th>
+        <th style="padding:5px 6px;text-align:center;border:1px solid #222;width:20mm;font-size:10px">ITEMS</th>
+        <th style="padding:5px 6px;text-align:center;border:1px solid #222;width:28mm;font-size:10px">PETUGAS</th>
       </tr>
     </thead>
     <tbody>`;
 
   if (!rows.length) {
-    html += `<tr><td colspan="6" style="text-align:center;padding:12px;color:#999">— Tidak ada transaksi —</td></tr>`;
+    html += `<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;font-size:12px">— Tidak ada transaksi —</td></tr>`;
   } else {
     rows.forEach((t, i) => {
       const bg = i % 2 === 0 ? '#fafafa' : '#fff';
@@ -2633,14 +2633,14 @@ function buildReportPage(header, subtitle, rows, allData) {
       const badgeBg = isBeli ? '#e8f5e9' : '#ffebee';
       const badgeColor = isBeli ? '#2e7d32' : '#c62828';
       html += `<tr style="background:${bg}">
-        <td style="padding:3px 5px;border:1px solid #ddd;font-weight:bold">${t.no_faktur || '-'}</td>
-        <td style="padding:3px 5px;border:1px solid #ddd;text-align:center">${t.tanggal || '-'}</td>
-        <td style="padding:3px 5px;border:1px solid #ddd">${t.supplier || t.customer || '-'}</td>
-        <td style="padding:3px 5px;border:1px solid #ddd;text-align:center">
-          <span style="background:${badgeBg};color:${badgeColor};font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px">${badge}</span>
+        <td style="padding:5px 6px;border:1px solid #ddd;font-weight:bold;font-size:11px">${t.no_faktur || '-'}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;text-align:center;font-size:11px">${t.tanggal || '-'}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px">${t.supplier || t.customer || '-'}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;text-align:center">
+          <span style="background:${badgeBg};color:${badgeColor};font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px">${badge}</span>
         </td>
-        <td style="padding:3px 5px;border:1px solid #ddd;text-align:center">${t.items_count || 0}</td>
-        <td style="padding:3px 5px;border:1px solid #ddd;text-align:center">${t.user || '-'}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;text-align:center;font-size:11px">${t.items_count || 0}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;text-align:center;font-size:11px">${t.user || '-'}</td>
       </tr>`;
     });
   }
@@ -2648,8 +2648,8 @@ function buildReportPage(header, subtitle, rows, allData) {
   html += `</tbody></table>`;
 
   // Footer
-  html += `<div style="margin-top:auto;padding-top:6px;border-top:1px solid #ccc;font-size:8px;color:#aaa;text-align:right">
-    ${rows.length} transaksi · Stock Gudang Utama · Halaman
+  html += `<div style="margin-top:auto;padding-top:8px;border-top:1px solid #ccc;font-size:9px;color:#aaa;text-align:right">
+    ${rows.length} transaksi · Stock Gudang Utama
   </div>`;
 
   html += `</div>`; // end page
