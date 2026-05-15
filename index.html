@@ -740,7 +740,7 @@ body {
           </div>
           <div class="accordion-group" id="accUser">
             <div class="settings-header collapsed" onclick="toggleAccordion(this)">USER MANAGEMENT</div>
-            <div class="accordion-group collapsed">
+            <div class="accordion-group collapsed" id="accUserItem">
               <div class="settings-item" onclick="openPage('user')" id="settingsUserBtn"><span class="icon">👥</span> USER MANAGEMENT</div>
             </div>
           </div>
@@ -1393,8 +1393,8 @@ function applyPermissions() {
   if (!can('db_open')) { document.getElementById('menuOpenDB').style.display = 'none'; }
   if (!can('item_add')) { document.getElementById('btnAddItem').style.display = 'none'; }
   if (!can('user_mgmt')) {
-    document.getElementById('settingsUserHeader').style.display = 'none';
-    document.getElementById('settingsUserBtn').style.display = 'none';
+    document.getElementById('accUser').style.display = 'none';
+    document.getElementById('accUserItem').style.display = 'none';
   }
 
   if (!can('db_new') && !can('db_save') && !can('db_open')) {

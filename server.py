@@ -389,8 +389,26 @@ def get_users():
     conn.close()
     return jsonify(users)
 
-@app.route('/api/users/<username>', methods=['GET'])
-def get_user(username):
+@app.route('/api/users/<username>', methods=['GET', 'DELETE'])
+def get_or_delete_user(username):
+    # If username is numeric, treat as user_id (Flask can't distinguish int vs string in same rule)
+    if username.isdigit():
+        user_id = int(username)
+        conn = get_db()
+        if request.method == 'DELETE':
+            cur = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            conn.commit()
+            deleted = cur.rowcount
+            conn.close()
+            if deleted == 0:
+                return jsonify({'error': 'User tidak ditemukan'}), 404
+            return jsonify({'ok': True, 'deleted': deleted})
+        else:
+            cur = conn.execute("SELECT id, username, role, created, lastlogin FROM users WHERE id = ?", (user_id,))
+            user = dict_from_row(cur.fetchone())
+            conn.close()
+            return jsonify(user) if user else jsonify({'error': 'Not found'}), 404
+    # String username lookup (for login/other uses)
     conn = get_db()
     cur = conn.execute("SELECT * FROM users WHERE username = ?", (username,))
     user = dict_from_row(cur.fetchone())
