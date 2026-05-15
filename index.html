@@ -803,7 +803,7 @@ body {
   <div id="pageUser" class="main page-user">
     <div class="page-header" style="padding:10px 16px">
       <div class="page-title" style="font-size:13px">👥 USER MANAGEMENT</div>
-      <button class="btn btn-primary" style="font-size:10px;padding:6px 14px" onclick="openAddUser()">＋ TAMBAH USER</button>
+      <button class="btn btn-primary" style="font-size:10px;padding:6px 14px;display:none" id="btnAddUser" onclick="openAddUser()">＋ TAMBAH USER</button>
     </div>
 
     <div class="page-content" style="padding:8px 16px">
@@ -1440,6 +1440,8 @@ function openPage(page) {
     document.getElementById('pageUser').classList.add('active');
     renderUserTable();
     renderPermissionMatrix();
+    // Only admin can add users
+    document.getElementById('btnAddUser').style.display = currentUser.role === 'admin' ? '' : 'none';
   } else if (page === 'transaksi') {
     document.getElementById('pageTransaksi').classList.add('active');
     loadTransaksiList();
@@ -1530,8 +1532,8 @@ function renderUserTable() {
       <td>${lastLogin}</td>
       <td>
         <div class="actions">
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="openEditUser(${u.id})" title="Edit">✏️</button>
-          ${users.length > 1 ? `<button class="btn btn-danger btn-sm btn-icon" onclick="openDeleteUser(${u.id})" title="Hapus">×</button>` : ''}
+          ${currentUser.role === 'admin' ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="openEditUser(${u.id})" title="Edit">✏️</button>` : ''}
+          ${currentUser.role === 'admin' && users.length > 1 ? `<button class="btn btn-danger btn-sm btn-icon" onclick="openDeleteUser(${u.id})" title="Hapus">×</button>` : ''}
         </div>
       </td>
     </tr>`;
@@ -1539,6 +1541,7 @@ function renderUserTable() {
 }
 
 function openAddUser() {
+  if (currentUser.role !== 'admin') { showToast('Akses ditolak — hanya admin yang boleh', 'error'); return; }
   editingUserId = null;
   document.getElementById('userModalTitle').textContent = '＋ TAMBAH USER';
   document.getElementById('uId').value = '';
@@ -1553,6 +1556,7 @@ function openAddUser() {
 }
 
 function openEditUser(id) {
+  if (currentUser.role !== 'admin') { showToast('Akses ditolak — hanya admin yang boleh', 'error'); return; }
   editingUserId = id;
   const u = users.find(x => x.id === id);
   if (!u) return;
@@ -1615,6 +1619,7 @@ function saveUser(e) {
 }
 
 function openDeleteUser(id) {
+  if (currentUser.role !== 'admin') { showToast('Akses ditolak — hanya admin yang boleh', 'error'); return; }
   const u = users.find(x => x.id === id);
   if (!u) return;
   deleteTarget = id;
