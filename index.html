@@ -2511,9 +2511,10 @@ async function loadTransaksiList() {
     console.log('Data received:', data.length, 'items');
     if (!data.length) {
       el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Belum ada transaksi</div>';
+      console.log('No data - showing empty state, data was:', data);
       return;
     }
-    el.innerHTML = data.map(t => {
+    const html = data.map(t => {
       const isBeli = t.type === 'PEMBELIAN';
       const badgeColor = isBeli ? 'var(--success)' : 'var(--danger)';
       const badgeBg = isBeli ? 'var(--success-dim)' : 'var(--danger-dim)';
@@ -2534,6 +2535,9 @@ async function loadTransaksiList() {
         '</div>' +
       '</div>' + ';' + '\n';
     }).join('');
+    console.log('Generated HTML length:', html.length, 'chars, items:', data.length);
+    el.innerHTML = html;
+    console.log('innerHTML set, el.innerHTML length:', el.innerHTML.length);
   } catch(e) {
     el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Gagal memuat transaksi</div>';
   }
