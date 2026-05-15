@@ -109,8 +109,11 @@ def update_item(item_id):
         item_id
     ))
     conn.commit()
+    # Return full updated item
+    cur = conn.execute("SELECT * FROM item WHERE id = ?", (item_id,))
+    updated = dict_from_row(cur.fetchone())
     conn.close()
-    return jsonify({'success': True})
+    return jsonify(updated)
 
 @app.route('/api/items/<int:item_id>', methods=['DELETE'])
 def delete_item(item_id):
