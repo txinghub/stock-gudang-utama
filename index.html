@@ -1378,8 +1378,8 @@ function can(perm) {
   const permMap = { lokasi:'loksi' };
   const apiPerm = permMap[perm] || perm;
   // permissions is a flat object { perm: bool } from API login response
-  // For undefined perms, default to true for permissive UX
-  if (permissions[apiPerm] === undefined) return true;
+  // Default to false for undefined perms (restrictive by default)
+  if (permissions[apiPerm] === undefined) return false;
   return permissions[apiPerm] === true;
 }
 
