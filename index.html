@@ -2539,7 +2539,6 @@ async function loadTransaksiList() {
 }
 
 async function openTransaksiForm(type) {
-  console.log('openTransaksiForm called, type=', type, 'settingsDropdown exists:', !!document.getElementById('settingsDropdown'));
   try {
   document.getElementById('settingsDropdown').classList.remove('show');
   let modal = document.getElementById('transaksiFormModal');
@@ -2612,9 +2611,7 @@ async function openTransaksiForm(type) {
   document.getElementById('tfTotal').textContent = 'Rp 0';
   m.onclick = function(e){ if(e.target===m) m.classList.remove('show'); };
   document.getElementById('transaksiFormCloseBtn').onclick = function(){ m.classList.remove('show'); };
-  console.log('about to add .show to transaksiFormModal, modal=', document.getElementById('transaksiFormModal'));
   m.classList.add('show');
-  console.log('show added');
   } catch(e) { console.error('openTransaksiForm error:', e); }
 }
 
