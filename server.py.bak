@@ -82,11 +82,8 @@ def add_item():
     ))
     conn.commit()
     item_id = cur.lastrowid
-    # Return full created item
-    cur = conn.execute("SELECT * FROM item WHERE id = ?", (item_id,))
-    created = dict_from_row(cur.fetchone())
     conn.close()
-    return jsonify(created), 201
+    return jsonify({'id': item_id}), 201
 
 @app.route('/api/items/<int:item_id>', methods=['PUT'])
 def update_item(item_id):
@@ -112,22 +109,12 @@ def update_item(item_id):
         item_id
     ))
     conn.commit()
-    # Return full updated item
-    cur = conn.execute("SELECT * FROM item WHERE id = ?", (item_id,))
-    updated = dict_from_row(cur.fetchone())
     conn.close()
-    return jsonify(updated)
+    return jsonify({'success': True})
 
 @app.route('/api/items/<int:item_id>', methods=['DELETE'])
 def delete_item(item_id):
     conn = get_db()
-    # Check if item has movements (history) — cannot delete if yes
-    movements = conn.execute(
-        "SELECT COUNT(*) FROM movements WHERE item_id = ?", (item_id,)
-    ).fetchone()[0]
-    if movements > 0:
-        conn.close()
-        return jsonify({'success': False, 'error': 'Item sudah punya history transaksi, tidak boleh dihapus'}), 400
     conn.execute("DELETE FROM item WHERE id = ?", (item_id,))
     conn.commit()
     conn.close()
@@ -402,32 +389,6 @@ def get_users():
     conn.close()
     return jsonify(users)
 
-@app.route('/api/users/<username>', methods=['GET', 'DELETE'])
-def get_or_delete_user(username):
-    # If username is numeric, treat as user_id (Flask can't distinguish int vs string in same rule)
-    if username.isdigit():
-        user_id = int(username)
-        conn = get_db()
-        if request.method == 'DELETE':
-            cur = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-            conn.commit()
-            deleted = cur.rowcount
-            conn.close()
-            if deleted == 0:
-                return jsonify({'error': 'User tidak ditemukan'}), 404
-            return jsonify({'ok': True, 'deleted': deleted})
-        else:
-            cur = conn.execute("SELECT id, username, role, created, lastlogin FROM users WHERE id = ?", (user_id,))
-            user = dict_from_row(cur.fetchone())
-            conn.close()
-            return jsonify(user) if user else jsonify({'error': 'Not found'}), 404
-    # String username lookup (for login/other uses)
-    conn = get_db()
-    cur = conn.execute("SELECT * FROM users WHERE username = ?", (username,))
-    user = dict_from_row(cur.fetchone())
-    conn.close()
-    return jsonify(user) if user else jsonify({'error': 'Not found'}), 404
-
 @app.route('/api/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     conn = get_db()
@@ -438,6 +399,8 @@ def delete_user(user_id):
     if deleted == 0:
         return jsonify({'error': 'User tidak ditemukan'}), 404
     return jsonify({'ok': True, 'deleted': deleted})
+
+@app.route('/api/users/<username>', methods=['GET'])
 def get_user(username):
     conn = get_db()
     cur = conn.execute("SELECT * FROM users WHERE username = ?", (username,))

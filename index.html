@@ -2000,6 +2000,7 @@ function openDetail(id) {
 function closeDetailModal() { document.getElementById('detailModal').classList.remove('show'); }
 
 function openDeleteItem(id) {
+  closeDetailModal(); // close detail first before showing delete modal
   const item = items.find(i => i.id === id);
   if (!item) return;
   if (!can('item_delete')) { showToast('Akses ditolak — tidak punya izin', 'error'); return; }
@@ -2018,10 +2019,12 @@ function confirmDelete() {
   if (deleteType === 'item' && deleteTarget) {
     if (!can('item_delete')) { showToast('Akses ditolak', 'error'); return; }
     // Call API to delete from database
-    fetch(API_BASE + '/items/' + deleteTarget, { method: 'DELETE' }).then(() => {
+    fetch(API_BASE + '/items/' + deleteTarget, { method: 'DELETE' }).then(res => res.json()).then(data => {
+      if (!data.success) { showToast(data.error || 'Gagal hapus item!', 'error'); return; }
       // Re-fetch all items from server to ensure sync
-      return fetch(API_BASE + '/items').then(res => res.json());
+      return fetch(API_BASE + '/items').then(r => r.json());
     }).then(data => {
+      if (!data) return; // error case already returned
       items = data;
       closeDeleteModal();
       closeDetailModal();
