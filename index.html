@@ -1904,28 +1904,30 @@ function saveItem(e) {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(() => {
+    }).then(res => res.json()).then(updated => {
       const idx = items.findIndex(i => i.id === editingItemId);
-      if (idx >= 0) items[idx] = { ...items[idx], ...data };
+      if (idx >= 0) items[idx] = { ...items[idx], ...updated };
+      closeItemModal();
+      renderCards();
+      updateStats();
       showToast('Item berhasil diupdate!', 'success');
-    });
-    showToast('Item berhasil diupdate!', 'success');
+    }).catch(() => showToast('Gagal update item!', 'error'));
+    showToast('Updating...', 'info');
   } else {
     // Add via API
     fetch(API_BASE + '/items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(res => res.json()).then((result) => {
-      data.id = result.id;
-      items.push(data);
+    }).then(res => res.json()).then(result => {
+      items.push(result);
+      closeItemModal();
+      renderCards();
+      updateStats();
       showToast('Item berhasil ditambahkan!', 'success');
-    });
-    showToast('Item berhasil ditambahkan!', 'success');
+    }).catch(() => showToast('Gagal tambah item!', 'error'));
+    showToast('Menambahkan...', 'info');
   }
-  closeItemModal();
-  renderCards();
-  updateStats();
 }
 
 function populateDropdowns() {
