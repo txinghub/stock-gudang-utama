@@ -2548,7 +2548,7 @@ async function openTransaksiForm(type) {
     m.innerHTML = '<div class="modal-content" style="max-width:700px;max-height:90vh;overflow-y:auto">' +
       '<div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)">' +
         '<div id="tfTitle" style="font-size:13px;font-weight:800;letter-spacing:2px"></div>' +
-        '<div class="modal-close" onclick="closeTransaksiForm()" style="cursor:pointer;font-size:18px;opacity:0.6">✕</div>' +
+        '<div class="modal-close" id="transaksiFormCloseBtn" onclick="closeTransaksiForm()" style="cursor:pointer;font-size:18px;opacity:0.6">✕</div>' +
       '</div>' +
       '<div style="padding:16px;display:flex;flex-direction:column;gap:12px">' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
@@ -2602,8 +2602,9 @@ async function openTransaksiForm(type) {
   sel.innerHTML = '<option value="">— Pilih Item —</option>' + items.map(function(i){return '<option value="'+i.id+'" data-nama="'+i.nama+'" data-satuan="'+i.satuan+'" data-harga="'+(i.price||0)+'">'+i.nama+' ('+i.satuan+') - Stok: '+i.stok+'</option>';}).join('');
   document.getElementById('tfItemsList').innerHTML = '';
   document.getElementById('tfTotal').textContent = 'Rp 0';
-  m.onclick = function(e){ if(e.target===m) m.classList.remove('show'); };
-  modal.classList.add('show');
+m.onclick = function(e){ if(e.target===m) m.classList.remove('show'); };
+    document.getElementById('transaksiFormCloseBtn').onclick = function(){ m.classList.remove('show'); };
+    m.classList.add('show');
 }
 
 function addTransaksiItem() {
