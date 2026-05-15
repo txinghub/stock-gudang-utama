@@ -2014,11 +2014,18 @@ function confirmDelete() {
     if (!can('item_delete')) { showToast('Akses ditolak', 'error'); return; }
     // Call API to delete from database
     fetch(API_BASE + '/items/' + deleteTarget, { method: 'DELETE' }).then(() => {
-      items = items.filter(i => i.id !== deleteTarget);
+      // Re-fetch all items from server to ensure sync
+      return fetch(API_BASE + '/items').then(res => res.json());
+    }).then(data => {
+      items = data;
+      closeDeleteModal();
+      closeDetailModal();
       showToast('Item berhasil dihapus!', 'success');
-      closeDetailModal(); // Close detail modal first
       renderCards();
       updateStats();
+    }).catch(err => {
+      showToast('Gagal hapus item!', 'error');
+      console.error('Delete error:', err);
     });
   } else if (deleteType === 'user' && deleteTarget) {
     if (users.length <= 1) { showToast('Minimal harus ada 1 user!', 'error'); return; }
