@@ -864,13 +864,15 @@ body {
 
     <!-- Transaksi filter tabs -->
     <div style="padding:8px 16px;display:flex;gap:6px;border-bottom:1px solid var(--border)">
-      <button class="tab active" data-tfilter="all" onclick="switchTransaksiFilter(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">SEMUA</button>
-      <button class="tab" data-tfilter="PEMBELIAN" onclick="switchTransaksiFilter(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">🛒 PEMBELIAN</button>
-      <button class="tab" data-tfilter="PENGIRIMAN" onclick="switchTransaksiFilter(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">🚚 PENGIRIMAN</button>
+      <button class="tab active" data-tfilter="all" onclick="switchReportTab(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">📄 SEMUA</button>
+      <button class="tab" data-tfilter="PEMBELIAN" onclick="switchReportTab(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">🛒 PEMBELIAN</button>
+      <button class="tab" data-tfilter="PENGIRIMAN" onclick="switchReportTab(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">🚚 PENGIRIMAN</button>
     </div>
 
-    <!-- Transaksi list -->
-    <div id="transaksiList" style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 220px);overflow-y:auto"></div>
+    <!-- Report A4 Container -->
+    <div id="reportContainer" style="padding:16px;display:flex;flex-direction:column;align-items:center;gap:24px;background:var(--bg);min-height:calc(100vh - 180px)">
+      <!-- A4 pages injected by JS -->
+    </div>
   </div>
 
 </div><!-- end mainApp -->
@@ -1444,7 +1446,7 @@ function openPage(page) {
     document.getElementById('btnAddUser').style.display = currentUser.role === 'admin' ? '' : 'none';
   } else if (page === 'transaksi') {
     document.getElementById('pageTransaksi').classList.add('active');
-    loadTransaksiList();
+    loadReport();
   }
 }
 
@@ -2507,62 +2509,151 @@ function confirmMovement() {
 }
 
 /* ================================================
-   TRANSAKSI (FAKTUR PEMBELIAN/PENGIRIMAN)
+   TRANSAKSI REPORT — A4 LAPORAN
    ================================================ */
 let transaksiFilter = 'all';
 
-function switchTransaksiFilter(btn) {
+function switchReportTab(btn) {
   document.querySelectorAll('[data-tfilter]').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   transaksiFilter = btn.dataset.tfilter;
-  loadTransaksiList();
+  loadReport();
 }
 
-async function loadTransaksiList() {
-  const el = document.getElementById('transaksiList');
-  if (!el) { console.error('transaksiList element not found'); return; }
-  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Memuat...</div>';
+async function loadReport() {
+  const el = document.getElementById('reportContainer');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Memuat laporan...</div>';
   try {
-    const url = transaksiFilter === 'all'
-      ? API_BASE + '/transaksi'
-      : API_BASE + '/transaksi?type=' + transaksiFilter;
-    console.log('Fetching transaksi:', url, '| filter:', transaksiFilter);
-    const res = await fetch(url);
-    console.log('Response status:', res.status);
-    const data = await res.json();
-    console.log('Data received:', data.length, 'items');
-    if (!data.length) {
-      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Belum ada transaksi</div>';
-      console.log('No data - showing empty state, data was:', data);
-      return;
-    }
-    const html = data.map(t => {
-      const isBeli = t.type === 'PEMBELIAN';
-      const badgeColor = isBeli ? 'var(--success)' : 'var(--danger)';
-      const badgeBg = isBeli ? 'var(--success-dim)' : 'var(--danger-dim)';
-      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer" onclick="viewTransaksi(' + t.id + ')">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-          '<div style="display:flex;align-items:center;gap:8px">' +
-            '<span style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text)">' + t.no_faktur + '</span>' +
-            '<span style="font-size:9px;padding:2px 8px;border-radius:4px;background:' + badgeBg + ';color:' + badgeColor + ';font-weight:700;letter-spacing:1px">' + t.type + '</span>' +
-          '</div>' +
-          '<div style="font-size:10px;color:var(--text-muted)">' + t.tanggal + '</div>' +
-        '</div>' +
-        '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">' +
-          (isBeli ? '🏭 Supplier: ' + (t.supplier||'-') : '👤 Customer: ' + (t.customer||'-')) +
-        '</div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:center">' +
-          '<div style="font-size:10px;color:var(--text-muted)">' + t.user + ' · ' + String(t.created||'').slice(0,16) + '</div>' +
-          '<div style="font-size:11px;color:var(--text-muted)">' + (t.items_count || 0) + ' item' + '</div>' +
-        '</div>' +
-      '</div>' + ';' + '\n';
-    }).join('');
-    console.log('Generated HTML length:', html.length, 'chars, items:', data.length);
-    el.innerHTML = html;
-    console.log('innerHTML set, el.innerHTML length:', el.innerHTML.length);
+    const res = await fetch(API_BASE + '/transaksi');
+    const allData = await res.json();
+    const filtered = transaksiFilter === 'all' ? allData : allData.filter(t => t.type === transaksiFilter);
+    renderA4Report(el, filtered, allData);
   } catch(e) {
-    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Gagal memuat transaksi</div>';
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Gagal memuat laporan</div>';
   }
+}
+
+function renderA4Report(container, filtered, allData) {
+  const activeFilter = transaksiFilter;
+  let html = '';
+
+  // Always build all 3 pages with correct per-page subtitle
+  const subtitles = {
+    'all': 'LAPORAN SEMUA TRANSAKSI',
+    'PEMBELIAN': 'LAPORAN MASUKAN BARANG',
+    'PENGIRIMAN': 'LAPORAN KELUAR BARANG'
+  };
+
+  // Only render the ACTIVE page (tab controls which one shows)
+  const rows = transaksiFilter === 'all' ? allData : allData.filter(t => t.type === transaksiFilter);
+  html += buildReportPage('LAPORAN KELUAR & MASUK BARANG', subtitles[transaksiFilter], rows, allData);
+
+  container.innerHTML = html;
+}
+
+function buildReportPage(header, subtitle, rows, allData) {
+  const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  const pageW = 210, pageH = 297; // mm A4
+  const margin = 15; // mm
+
+  let html = `<div style="
+    width:210mm;
+    min-height:297mm;
+    background:#fff;
+    color:#1a1a1a;
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:10px;
+    padding:15mm;
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  ">`;
+
+  // Company / Title block — header always same, subtitle varies
+  html += `<div style="text-align:center;border-bottom:2px solid #333;padding-bottom:6px;margin-bottom:4px">
+    <div style="font-size:16px;font-weight:bold;letter-spacing:3px;text-transform:uppercase">${header}</div>
+    <div style="font-size:11px;color:#555;margin-top:2px">${subtitle}</div>
+    <div style="font-size:9px;color:#888">Dicetak: ${today}</div>
+  </div>`;
+
+  // Summary stats — show full 3-box for "all", single box for filtered
+  const isSemua = rows.length === allData.length;
+  if (isSemua) {
+    const beli = allData.filter(t => t.type === 'PEMBELIAN').length;
+    const kirim = allData.filter(t => t.type === 'PENGIRIMAN').length;
+    html += `<div style="display:flex;gap:8px;margin-bottom:2px">
+      <div style="flex:1;border:1px solid #333;padding:4px 6px;text-align:center">
+        <div style="font-size:16px;font-weight:bold">${allData.length}</div>
+        <div style="font-size:8px;color:#555">TOTAL TRANSAKSI</div>
+      </div>
+      <div style="flex:1;border:1px solid #333;padding:4px 6px;text-align:center;background:#e8f5e9">
+        <div style="font-size:16px;font-weight:bold;color:#2e7d32">${beli}</div>
+        <div style="font-size:8px;color:#555">PEMBELIAN</div>
+      </div>
+      <div style="flex:1;border:1px solid #333;padding:4px 6px;text-align:center;background:#ffebee">
+        <div style="font-size:16px;font-weight:bold;color:#c62828">${kirim}</div>
+        <div style="font-size:8px;color:#555">PENGIRIMAN</div>
+      </div>
+    </div>`;
+  } else {
+    // For single-type pages, show count of that type
+    const cnt = rows.length;
+    const isBeli = subtitle.includes('MASUKAN');
+    html += `<div style="display:flex;gap:8px;margin-bottom:2px">
+      <div style="flex:1;border:1px solid ${isBeli ? '#2e7d32' : '#c62828'};padding:4px 6px;text-align:center;background:${isBeli ? '#e8f5e9' : '#ffebee'}">
+        <div style="font-size:16px;font-weight:bold;color:${isBeli ? '#2e7d32' : '#c62828'}">${cnt}</div>
+        <div style="font-size:8px;color:#555">${isBeli ? 'PEMBELIAN' : 'PENGIRIMAN'}</div>
+      </div>
+    </div>`;
+  }
+
+  // Table header
+  html += `<table style="width:100%;border-collapse:collapse;font-size:9px;margin-top:4px">
+    <thead>
+      <tr style="background:#333;color:#fff">
+        <th style="padding:4px 5px;text-align:left;border:1px solid #222;width:28mm">NO.FAKTUR</th>
+        <th style="padding:4px 5px;text-align:center;border:1px solid #222;width:22mm">TANGGAL</th>
+        <th style="padding:4px 5px;text-align:left;border:1px solid #222;width:35mm">SUPPLIER/CUSTOMER</th>
+        <th style="padding:4px 5px;text-align:center;border:1px solid #222;width:22mm">JENIS</th>
+        <th style="padding:4px 5px;text-align:center;border:1px solid #222;width:20mm">ITEMS</th>
+        <th style="padding:4px 5px;text-align:center;border:1px solid #222;width:28mm">PETUGAS</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  if (!rows.length) {
+    html += `<tr><td colspan="6" style="text-align:center;padding:12px;color:#999">— Tidak ada transaksi —</td></tr>`;
+  } else {
+    rows.forEach((t, i) => {
+      const bg = i % 2 === 0 ? '#fafafa' : '#fff';
+      const isBeli = t.type === 'PEMBELIAN';
+      const badge = isBeli ? 'PEMBELIAN' : 'PENGIRIMAN';
+      const badgeBg = isBeli ? '#e8f5e9' : '#ffebee';
+      const badgeColor = isBeli ? '#2e7d32' : '#c62828';
+      html += `<tr style="background:${bg}">
+        <td style="padding:3px 5px;border:1px solid #ddd;font-weight:bold">${t.no_faktur || '-'}</td>
+        <td style="padding:3px 5px;border:1px solid #ddd;text-align:center">${t.tanggal || '-'}</td>
+        <td style="padding:3px 5px;border:1px solid #ddd">${t.supplier || t.customer || '-'}</td>
+        <td style="padding:3px 5px;border:1px solid #ddd;text-align:center">
+          <span style="background:${badgeBg};color:${badgeColor};font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px">${badge}</span>
+        </td>
+        <td style="padding:3px 5px;border:1px solid #ddd;text-align:center">${t.items_count || 0}</td>
+        <td style="padding:3px 5px;border:1px solid #ddd;text-align:center">${t.user || '-'}</td>
+      </tr>`;
+    });
+  }
+
+  html += `</tbody></table>`;
+
+  // Footer
+  html += `<div style="margin-top:auto;padding-top:6px;border-top:1px solid #ccc;font-size:8px;color:#aaa;text-align:right">
+    ${rows.length} transaksi · Stock Gudang Utama · Halaman
+  </div>`;
+
+  html += `</div>`; // end page
+  return html;
 }
 
 async function openTransaksiForm(type) {
@@ -2696,7 +2787,7 @@ async function submitTransaksi() {
     closeTransaksiForm();
     var r = await fetch(API_BASE + '/items'); items = await r.json();
     renderCards(); updateStats();
-    if (document.getElementById('pageTransaksi').classList.contains('active')) loadTransaksiList();
+    if (document.getElementById('pageTransaksi').classList.contains('active')) loadReport();
   } catch(e) { showToast('Gagal: '+e.message, 'error'); }
 }
 
