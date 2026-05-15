@@ -2592,14 +2592,14 @@ async function openTransaksiForm(type) {
   if (type === 'PEMBELIAN') {
     document.getElementById('tfPartyLabel').textContent = 'SUPPLIER';
     document.getElementById('tfParty').placeholder = 'Ketik atau pilih supplier...';
-    fetch(API_BASE + '/settings/supplier').then(r=>r.json()).then(data=>{
-      document.getElementById('tfPartyList').innerHTML = ((data.settings&&data.settings.supplier)||[]).map(function(s){return '<option value="'+s+'">';}).join('');
+    fetch(API_BASE + '/settings/supplier').then(r=>r.json()).then(function(data){
+      document.getElementById('tfPartyList').innerHTML = data.map(function(s){return '<option value="'+s.value+'">';}).join('');
     });
   } else {
     document.getElementById('tfPartyLabel').textContent = 'CUSTOMER';
     document.getElementById('tfParty').placeholder = 'Ketik atau pilih customer...';
-    fetch(API_BASE + '/settings/customer').then(r=>r.json()).then(data=>{
-      document.getElementById('tfPartyList').innerHTML = ((data.settings&&data.settings.customer)||[]).map(function(s){return '<option value="'+s+'">';}).join('');
+    fetch(API_BASE + '/settings/customer').then(r=>r.json()).then(function(data){
+      document.getElementById('tfPartyList').innerHTML = data.map(function(s){return '<option value="'+s.value+'">';}).join('');
     });
   }
   const sel = document.getElementById('tfItemSelect');
