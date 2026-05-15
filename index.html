@@ -1904,9 +1904,11 @@ function saveItem(e) {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(res => res.json()).then(updated => {
-      const idx = items.findIndex(i => i.id === editingItemId);
-      if (idx >= 0) items[idx] = { ...items[idx], ...updated };
+    }).then(res => res.json()).then(() => {
+      // Re-fetch all items to ensure server sync
+      return fetch(API_BASE + '/items').then(r => r.json());
+    }).then(serverItems => {
+      items = serverItems;
       closeItemModal();
       renderCards();
       updateStats();
@@ -1920,7 +1922,10 @@ function saveItem(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }).then(res => res.json()).then(result => {
-      items.push(result);
+      // Re-fetch all items to ensure server sync
+      return fetch(API_BASE + '/items').then(r => r.json());
+    }).then(serverItems => {
+      items = serverItems;
       closeItemModal();
       renderCards();
       updateStats();

@@ -82,8 +82,11 @@ def add_item():
     ))
     conn.commit()
     item_id = cur.lastrowid
+    # Return full created item
+    cur = conn.execute("SELECT * FROM item WHERE id = ?", (item_id,))
+    created = dict_from_row(cur.fetchone())
     conn.close()
-    return jsonify({'id': item_id}), 201
+    return jsonify(created), 201
 
 @app.route('/api/items/<int:item_id>', methods=['PUT'])
 def update_item(item_id):
