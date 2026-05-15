@@ -2592,11 +2592,15 @@ async function openTransaksiForm(type) {
   if (type === 'PEMBELIAN') {
     document.getElementById('tfPartyLabel').textContent = 'SUPPLIER';
     document.getElementById('tfParty').placeholder = 'Ketik atau pilih supplier...';
-    document.getElementById('tfPartyList').innerHTML = (window.settings.supplier||[]).map(function(s){return '<option value="'+s+'">';}).join('');
+    fetch(API_BASE + '/settings/supplier').then(r=>r.json()).then(data=>{
+      document.getElementById('tfPartyList').innerHTML = ((data.settings&&data.settings.supplier)||[]).map(function(s){return '<option value="'+s+'">';}).join('');
+    });
   } else {
     document.getElementById('tfPartyLabel').textContent = 'CUSTOMER';
     document.getElementById('tfParty').placeholder = 'Ketik atau pilih customer...';
-    document.getElementById('tfPartyList').innerHTML = (window.settings.customer||[]).map(function(s){return '<option value="'+s+'">';}).join('');
+    fetch(API_BASE + '/settings/customer').then(r=>r.json()).then(data=>{
+      document.getElementById('tfPartyList').innerHTML = ((data.settings&&data.settings.customer)||[]).map(function(s){return '<option value="'+s+'">';}).join('');
+    });
   }
   const sel = document.getElementById('tfItemSelect');
   sel.innerHTML = '<option value="">— Pilih Item —</option>' + items.map(function(i){return '<option value="'+i.id+'" data-nama="'+i.nama+'" data-satuan="'+i.satuan+'" data-harga="'+(i.price||0)+'">'+i.nama+' ('+i.satuan+') - Stok: '+i.stok+'</option>';}).join('');
