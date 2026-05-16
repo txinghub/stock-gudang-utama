@@ -241,38 +241,38 @@ def add_movement():
     conn.close()
     return jsonify({'id': movement_id}), 201
 
-# ==================== TRANSAKSI API ====================
+# ==================== PEMBELIAN & PENGELUARAN API ====================
 
-def generate_next_faktur(transaksi_type, tanggal):
+def generate_next_faktur(prefix, tanggal):
     """
-    Generate next faktur number: F2605/0001
-    Format: F + YY + MM + / + 4-digit sequential (reset per month per type)
+    Generate next faktur number: AD-PBL/2605/0001
+    Format: PREFIX + / + YYMM + / + 4-digit sequential (reset per month)
     """
     year = tanggal[2:4]  # '26'
     month = tanggal[5:7]  # '05'
-    prefix = f"F{year}{month}"  # 'F2605'
+    prefix_str = f"{prefix}/{year}{month}"  # 'AD-PBL/2605'
     
-    # Find highest existing faktur for this month/type
-    pattern = f"{prefix}%"
+    # Find highest existing faktur for this prefix
+    pattern = f"{prefix_str}%"
     conn = get_db()
     cur = conn.execute(
-        "SELECT no_faktur FROM transaksi WHERE no_faktur LIKE ? AND type = ? ORDER BY no_faktur DESC LIMIT 1",
-        (pattern, transaksi_type.upper())
+        "SELECT no_faktur FROM (SELECT no_faktur FROM pembelian WHERE no_faktur LIKE ? UNION ALL SELECT no_faktur FROM pengeluaran WHERE no_faktur LIKE ?) ORDER BY no_faktur DESC LIMIT 1",
+        (pattern, pattern)
     )
     row = cur.fetchone()
     conn.close()
     
     if row:
-        last = row['no_faktur']  # e.g. "F2605/0037"
+        last = row['no_faktur']  # e.g. "AD-PBL/2605/0037"
         parts = last.split('/')
-        if len(parts) == 2:
-            seq = int(parts[1]) + 1
+        if len(parts) == 3:
+            seq = int(parts[2]) + 1
         else:
             seq = 1
     else:
         seq = 1
     
-    return f"{prefix}/{seq:04d}"
+    return f"{prefix_str}/{seq:04d}"
 
 @app.route('/api/next-faktur', methods=['GET'])
 def get_next_faktur():
@@ -281,77 +281,69 @@ def get_next_faktur():
     tanggal = request.args.get('tanggal', '')
     if not tanggal:
         tanggal = datetime.now().strftime('%Y-%m-%d')
-    next_no = generate_next_faktur(t_type, tanggal)
-    return jsonify({'no_faktur': next_no})
+    
+    prefix = 'AD-PBL' if t_type == 'PEMBELIAN' else 'AD-MTS'
+    next_no = generate_next_faktur(prefix, tanggal)
+    return jsonify({'no_faktur': next_no, 'prefix': prefix})
 
-@app.route('/api/transaksi', methods=['GET'])
-def get_transaksi():
-    t_type = request.args.get('type')
+# ----- PEMBELIAN -----
+
+@app.route('/api/pembelian', methods=['GET'])
+def get_pembelian():
     conn = get_db()
-    if t_type:
-        cur = conn.execute(
-            "SELECT * FROM transaksi WHERE type = ? ORDER BY tanggal DESC, id DESC",
-            (t_type.upper(),)
-        )
-    else:
-        cur = conn.execute("SELECT * FROM transaksi ORDER BY tanggal DESC, id DESC LIMIT 100")
+    cur = conn.execute("SELECT * FROM pembelian ORDER BY tanggal DESC, id DESC LIMIT 100")
     rows = [dict_from_row(row) for row in cur.fetchall()]
     for r in rows:
-        ci = conn.execute("SELECT COUNT(*) as c FROM transaksi_items WHERE transaksi_id = ?", (r['id'],)).fetchone()
+        ci = conn.execute("SELECT COUNT(*) as c FROM pembelian_items WHERE pembelian_id = ?", (r['id'],)).fetchone()
         r['items_count'] = ci['c'] if ci else 0
     conn.close()
     return jsonify(rows)
 
-@app.route('/api/transaksi/<int:transaksi_id>', methods=['GET'])
-def get_transaksi_detail(transaksi_id):
+@app.route('/api/pembelian/<int:pembelian_id>', methods=['GET'])
+def get_pembelian_detail(pembelian_id):
     conn = get_db()
-    cur = conn.execute("SELECT * FROM transaksi WHERE id = ?", (transaksi_id,))
+    cur = conn.execute("SELECT * FROM pembelian WHERE id = ?", (pembelian_id,))
     header = dict_from_row(cur.fetchone())
     if not header:
         conn.close()
         return jsonify({'error': 'Not found'}), 404
-    cur = conn.execute("SELECT * FROM transaksi_items WHERE transaksi_id = ?", (transaksi_id,))
+    cur = conn.execute("SELECT * FROM pembelian_items WHERE pembelian_id = ?", (pembelian_id,))
     items = [dict_from_row(row) for row in cur.fetchall()]
     conn.close()
     header['items'] = items
     return jsonify(header)
 
-@app.route('/api/transaksi', methods=['POST'])
-def add_transaksi():
+@app.route('/api/pembelian', methods=['POST'])
+def add_pembelian():
     data = request.json
     conn = get_db()
     try:
-        # Auto-generate no_faktur if not provided
         no_faktur = data.get('no_faktur', '').strip()
-        transaksi_type = data.get('type', '').upper()
         tanggal = data.get('tanggal', '')
         if not no_faktur:
-            no_faktur = generate_next_faktur(transaksi_type, tanggal)
+            no_faktur = generate_next_faktur('AD-PBL', tanggal)
         else:
             no_faktur = no_faktur.upper()
 
         cur = conn.execute("""
-            INSERT INTO transaksi (no_faktur, type, tanggal, supplier, customer, total, keterangan, user, created)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            INSERT INTO pembelian (no_faktur, tanggal, supplier, total, keterangan, user, created)
+            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
         """, (
             no_faktur,
-            transaksi_type,
             tanggal,
             data.get('supplier', '').upper(),
-            data.get('customer', '').upper(),
             data.get('total', 0),
             data.get('keterangan', '').upper(),
             data.get('user', 'ADMIN')
         ))
-        transaksi_id = cur.lastrowid
+        pembelian_id = cur.lastrowid
 
-        # Insert items
         for ti in data.get('items', []):
             conn.execute("""
-                INSERT INTO transaksi_items (transaksi_id, item_id, nama, satuan, qty, harga, subtotal)
+                INSERT INTO pembelian_items (pembelian_id, item_id, nama, satuan, qty, harga, subtotal)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
-                transaksi_id,
+                pembelian_id,
                 ti.get('item_id'),
                 ti.get('nama', '').upper(),
                 ti.get('satuan', '').upper(),
@@ -359,49 +351,131 @@ def add_transaksi():
                 ti.get('harga', 0),
                 ti.get('subtotal', 0)
             ))
-            # Update stock
             item_id = ti.get('item_id')
             qty = ti.get('qty', 0)
-            if data.get('type', '').upper() == 'PEMBELIAN':
-                conn.execute("UPDATE item SET stok = stok + ? WHERE id = ?", (qty, item_id))
-                # Record movement
-                conn.execute("""
-                    INSERT INTO movements (item_id, item_nama, kode, type, jumlah, satuan, tanggal, catatan)
-                    VALUES (?, ?, '', 'MASUK', ?, ?, ?, ?)
-                """, (item_id, ti.get('nama', '').upper(), qty, ti.get('satuan', '').upper(),
-                      data.get('tanggal', ''), data.get('no_faktur', '').upper()))
-            elif data.get('type', '').upper() == 'PENGIRIMAN':
-                conn.execute("UPDATE item SET stok = stok - ? WHERE id = ?", (qty, item_id))
-                conn.execute("""
-                    INSERT INTO movements (item_id, item_nama, kode, type, jumlah, satuan, tanggal, catatan)
-                    VALUES (?, ?, '', 'KELUAR', ?, ?, ?, ?)
-                """, (item_id, ti.get('nama', '').upper(), qty, ti.get('satuan', '').upper(),
-                      data.get('tanggal', ''), data.get('no_faktur', '').upper()))
+            conn.execute("UPDATE item SET stok = stok + ? WHERE id = ?", (qty, item_id))
+            conn.execute("""
+                INSERT INTO movements (item_id, item_nama, kode, type, jumlah, satuan, tanggal, catatan)
+                VALUES (?, ?, '', 'MASUK', ?, ?, ?, ?)
+            """, (item_id, ti.get('nama', '').upper(), qty, ti.get('satuan', '').upper(),
+                  tanggal, no_faktur))
 
         conn.commit()
         conn.close()
-        return jsonify({'id': transaksi_id}), 201
+        return jsonify({'id': pembelian_id, 'no_faktur': no_faktur}), 201
     except sqlite3.IntegrityError:
         conn.close()
         return jsonify({'error': 'No faktur sudah ada'}), 400
 
-@app.route('/api/transaksi/<int:transaksi_id>', methods=['DELETE'])
-def delete_transaksi(transaksi_id):
+@app.route('/api/pembelian/<int:pembelian_id>', methods=['DELETE'])
+def delete_pembelian(pembelian_id):
     conn = get_db()
-    # Reverse stock first
-    cur = conn.execute("SELECT * FROM transaksi WHERE id = ?", (transaksi_id,))
+    cur = conn.execute("SELECT * FROM pembelian WHERE id = ?", (pembelian_id,))
     t = dict_from_row(cur.fetchone())
     if t:
-        cur = conn.execute("SELECT * FROM transaksi_items WHERE transaksi_id = ?", (transaksi_id,))
+        cur = conn.execute("SELECT * FROM pembelian_items WHERE pembelian_id = ?", (pembelian_id,))
         for ti in cur.fetchall():
-            qty = ti['qty']
-            if t['type'] == 'PEMBELIAN':
-                conn.execute("UPDATE item SET stok = stok - ? WHERE id = ?", (qty, ti['item_id']))
-            else:
-                conn.execute("UPDATE item SET stok = stok + ? WHERE id = ?", (qty, ti['item_id']))
-        conn.execute("DELETE FROM transaksi_items WHERE transaksi_id = ?", (transaksi_id,))
+            conn.execute("UPDATE item SET stok = stok - ? WHERE id = ?", (ti['qty'], ti['item_id']))
+        conn.execute("DELETE FROM pembelian_items WHERE pembelian_id = ?", (pembelian_id,))
         conn.execute("DELETE FROM movements WHERE catatan = ?", (t['no_faktur'],))
-    conn.execute("DELETE FROM transaksi WHERE id = ?", (transaksi_id,))
+    conn.execute("DELETE FROM pembelian WHERE id = ?", (pembelian_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+# ----- PENGELUARAN -----
+
+@app.route('/api/pengeluaran', methods=['GET'])
+def get_pengeluaran():
+    conn = get_db()
+    cur = conn.execute("SELECT * FROM pengeluaran ORDER BY tanggal DESC, id DESC LIMIT 100")
+    rows = [dict_from_row(row) for row in cur.fetchall()]
+    for r in rows:
+        ci = conn.execute("SELECT COUNT(*) as c FROM pengeluaran_items WHERE pengeluaran_id = ?", (r['id'],)).fetchone()
+        r['items_count'] = ci['c'] if ci else 0
+    conn.close()
+    return jsonify(rows)
+
+@app.route('/api/pengeluaran/<int:pengeluaran_id>', methods=['GET'])
+def get_pengeluaran_detail(pengeluaran_id):
+    conn = get_db()
+    cur = conn.execute("SELECT * FROM pengeluaran WHERE id = ?", (pengeluaran_id,))
+    header = dict_from_row(cur.fetchone())
+    if not header:
+        conn.close()
+        return jsonify({'error': 'Not found'}), 404
+    cur = conn.execute("SELECT * FROM pengeluaran_items WHERE pengeluaran_id = ?", (pengeluaran_id,))
+    items = [dict_from_row(row) for row in cur.fetchall()]
+    conn.close()
+    header['items'] = items
+    return jsonify(header)
+
+@app.route('/api/pengeluaran', methods=['POST'])
+def add_pengeluaran():
+    data = request.json
+    conn = get_db()
+    try:
+        no_faktur = data.get('no_faktur', '').strip()
+        tanggal = data.get('tanggal', '')
+        if not no_faktur:
+            no_faktur = generate_next_faktur('AD-MTS', tanggal)
+        else:
+            no_faktur = no_faktur.upper()
+
+        cur = conn.execute("""
+            INSERT INTO pengeluaran (no_faktur, tanggal, customer, total, keterangan, user, created)
+            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        """, (
+            no_faktur,
+            tanggal,
+            data.get('customer', '').upper(),
+            data.get('total', 0),
+            data.get('keterangan', '').upper(),
+            data.get('user', 'ADMIN')
+        ))
+        pengeluaran_id = cur.lastrowid
+
+        for ti in data.get('items', []):
+            conn.execute("""
+                INSERT INTO pengeluaran_items (pengeluaran_id, item_id, nama, satuan, qty, harga, subtotal)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                pengeluaran_id,
+                ti.get('item_id'),
+                ti.get('nama', '').upper(),
+                ti.get('satuan', '').upper(),
+                ti.get('qty', 0),
+                ti.get('harga', 0),
+                ti.get('subtotal', 0)
+            ))
+            item_id = ti.get('item_id')
+            qty = ti.get('qty', 0)
+            conn.execute("UPDATE item SET stok = stok - ? WHERE id = ?", (qty, item_id))
+            conn.execute("""
+                INSERT INTO movements (item_id, item_nama, kode, type, jumlah, satuan, tanggal, catatan)
+                VALUES (?, ?, '', 'KELUAR', ?, ?, ?, ?)
+            """, (item_id, ti.get('nama', '').upper(), qty, ti.get('satuan', '').upper(),
+                  tanggal, no_faktur))
+
+        conn.commit()
+        conn.close()
+        return jsonify({'id': pengeluaran_id, 'no_faktur': no_faktur}), 201
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({'error': 'No faktur sudah ada'}), 400
+
+@app.route('/api/pengeluaran/<int:pengeluaran_id>', methods=['DELETE'])
+def delete_pengeluaran(pengeluaran_id):
+    conn = get_db()
+    cur = conn.execute("SELECT * FROM pengeluaran WHERE id = ?", (pengeluaran_id,))
+    t = dict_from_row(cur.fetchone())
+    if t:
+        cur = conn.execute("SELECT * FROM pengeluaran_items WHERE pengeluaran_id = ?", (pengeluaran_id,))
+        for ti in cur.fetchall():
+            conn.execute("UPDATE item SET stok = stok + ? WHERE id = ?", (ti['qty'], ti['item_id']))
+        conn.execute("DELETE FROM pengeluaran_items WHERE pengeluaran_id = ?", (pengeluaran_id,))
+        conn.execute("DELETE FROM movements WHERE catatan = ?", (t['no_faktur'],))
+    conn.execute("DELETE FROM pengeluaran WHERE id = ?", (pengeluaran_id,))
     conn.commit()
     conn.close()
     return jsonify({'success': True})

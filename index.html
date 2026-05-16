@@ -2776,23 +2776,23 @@ function removeTfItem(idx) { window.tfItems.splice(idx, 1); renderTfItems(); }
 function closeTransaksiForm() { document.getElementById('transaksiFormModal').classList.remove('show'); }
 
 async function submitTransaksi() {
-  var noFaktur = window.tfAutoFaktur || '';
-  var tanggal = document.getElementById('tfTanggal').value;
   var party = document.getElementById('tfParty').value.trim();
   var keterangan = document.getElementById('tfKeterangan').value.trim();
-  if (!noFaktur) { showToast('No. Faktur wajib diisi', 'error'); return; }
   if (!tanggal) { showToast('Tanggal wajib diisi', 'error'); return; }
   if (!window.tfItems.length) { showToast('Tambah minimal 1 item', 'error'); return; }
   var total = window.tfItems.reduce(function(s,i){return s+i.subtotal;}, 0);
+  var isBeli = window.tfType === 'PEMBELIAN';
+  var endpoint = isBeli ? '/pembelian' : '/pengeluaran';
   var payload = {
-    no_faktur: noFaktur, type: window.tfType, tanggal: tanggal,
-    supplier: window.tfType === 'PEMBELIAN' ? party : '',
-    customer: window.tfType === 'PENGIRIMAN' ? party : '',
+    no_faktur: window.tfAutoFaktur || '',
+    tanggal: tanggal,
+    supplier: isBeli ? party : '',
+    customer: isBeli ? '' : party,
     keterangan: keterangan, user: currentUser ? currentUser.username : 'ADMIN',
     items: window.tfItems, total: total
   };
   try {
-    var res = await fetch(API_BASE + '/transaksi', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    var res = await fetch(API_BASE + endpoint, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if (!res.ok) { var err = await res.json(); showToast(err.error||'Gagal simpan','error'); return; }
     showToast('Faktur berhasil disimpan!', 'success');
     closeTransaksiForm();
@@ -2802,16 +2802,17 @@ async function submitTransaksi() {
   } catch(e) { showToast('Gagal: '+e.message, 'error'); }
 }
 
-async function viewTransaksi(id) {
+async function viewTransaksi(id, type) {
   try {
-    var res = await fetch(API_BASE + '/transaksi/' + id);
+    var endpoint = type === 'PEMBELIAN' ? '/pembelian/' + id : '/pengeluaran/' + id;
+    var res = await fetch(API_BASE + endpoint);
     var t = await res.json();
-    var isBeli = t.type === 'PEMBELIAN';
+    var isBeli = type === 'PEMBELIAN';
     var itemsHtml = (t.items||[]).map(function(it){return '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--surface);border-radius:6px;font-size:11px"><div><span style="font-weight:700">'+it.nama+'</span> '+it.qty+'x'+it.satuan+'</div><div style="color:var(--accent)">Rp '+it.subtotal.toLocaleString('id')+'</div></div>';}).join('');
     var html = '<div style="padding:20px;display:flex;flex-direction:column;gap:12px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center">' +
         '<div><div style="font-size:14px;font-weight:800;letter-spacing:2px">'+t.no_faktur+'</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">'+t.tanggal+' · '+t.user+'</div></div>' +
-        '<div style="font-size:11px;padding:3px 10px;border-radius:4px;background:'+(isBeli?'var(--success-dim)':'var(--danger-dim)')+';color:'+(isBeli?'var(--success)':'var(--danger)')+';font-weight:700">'+t.type+'</div>' +
+        '<div style="font-size:11px;padding:3px 10px;border-radius:4px;background:'+(isBeli?'var(--success-dim)':'var(--danger-dim)')+';color:'+(isBeli?'var(--success)':'var(--danger)')+';font-weight:700">'+(isBeli?'PEMBELIAN':'PENGELUARAN')+'</div>' +
       '</div>' +
       '<div style="font-size:11px;background:var(--surface);padding:10px;border-radius:6px"><div style="color:var(--text-muted);margin-bottom:2px">'+(isBeli?'SUPPLIER':'CUSTOMER')+'</div><div style="font-weight:700">'+(isBeli?(t.supplier||'-'):(t.customer||'-'))+'</div></div>' +
       '<div style="display:flex;flex-direction:column;gap:6px">'+itemsHtml+'</div>' +
