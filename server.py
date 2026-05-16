@@ -616,6 +616,28 @@ def get_stats():
     })
 
 if __name__ == '__main__':
+    # Auto-backup before server starts
+    import shutil
+    import glob
+    BACKUP_DIR = os.path.join(os.path.dirname(__file__), 'db', 'backups')
+    NAS_DIR = '/Users/linggothioputro/NAS_Hermes/stock-gudang-utama/backups'
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    local_dest = os.path.join(BACKUP_DIR, f'stock_{ts}.db')
+    shutil.copy2(DB_PATH, local_dest)
+    # Keep only 10 newest local backups
+    backups = sorted(glob.glob(os.path.join(BACKUP_DIR, 'stock_*.db')))
+    while len(backups) > 10:
+        os.remove(backups.pop(0))
+    # NAS backup
+    try:
+        os.makedirs(NAS_DIR, exist_ok=True)
+        shutil.copy2(DB_PATH, os.path.join(NAS_DIR, f'stock_{ts}.db'))
+        print(f"✓ Backup NAS: stock_{ts}.db")
+    except:
+        print("⚠ NAS backup skipped (not available)")
+    print(f"✓ Backup local: stock_{ts}.db")
+    
     # Ensure db directory exists
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     
