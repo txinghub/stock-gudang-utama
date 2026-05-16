@@ -1662,10 +1662,12 @@ function confirmDelete() {
       .then(res => res.json())
       .then(data => {
         if (data.error) { showToast(data.error, 'error'); closeDeleteModal(); return; }
-        users = users.filter(u => u.id !== deleteTarget);
-        renderUserTable();
         closeDeleteModal();
         showToast('User berhasil dihapus!', 'success');
+        // Re-fetch user list dari server
+        fetch(API_BASE + '/users', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('authToken') || currentUser.username) } })
+          .then(r => r.json())
+          .then(u => { users = u; renderUserTable(); });
       })
       .catch(() => { showToast('Gagal menghapus user!', 'error'); closeDeleteModal(); });
   }
@@ -2079,13 +2081,28 @@ function confirmDelete() {
     });
   } else if (deleteType === 'user' && deleteTarget) {
     if (users.length <= 1) { showToast('Minimal harus ada 1 user!', 'error'); return; }
-    fetch(API_BASE + '/users/' + deleteTarget, { method: 'DELETE' }).then(() => {
-      users = users.filter(u => u.id !== deleteTarget);
-      showToast('User berhasil dihapus!', 'success');
-      renderUserTable();
-      updateLoginUserList();
-      renderUserSwitchList();
-    });
+    const token = localStorage.getItem('authToken') || currentUser.username;
+    const headers = { 'Authorization': 'Bearer ' + token };
+    if (currentUser.username.toUpperCase() === 'ADMIN') {
+      headers['X-Emergency-Password'] = 'syncmaster740';
+    }
+    fetch(API_BASE + '/users/' + deleteTarget, { method: 'DELETE', headers })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) { showToast(data.error, 'error'); return; }
+        closeDeleteModal();
+        showToast('User berhasil dihapus!', 'success');
+        // Re-fetch user list dari server
+        fetch(API_BASE + '/users', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(r => r.json())
+          .then(u => {
+            users = u;
+            renderUserTable();
+            updateLoginUserList();
+            renderUserSwitchList();
+          });
+      })
+      .catch(() => { showToast('Gagal menghapus user!', 'error'); closeDeleteModal(); });
   } else if (deleteType === 'setting' && deleteTarget !== null) {
     // Get value before splicing for API ID lookup
     const valToDelete = (settings[currentSettingType]||[])[deleteTarget];

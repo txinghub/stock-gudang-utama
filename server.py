@@ -572,9 +572,14 @@ def delete_user(user_id):
         return jsonify({'error': 'User tidak ditemukan'}), 404
 
     # Cek authorization
-    is_emergency_admin = (token_username.upper() == 'ADMIN' and request.headers.get('X-Emergency-Password') == 'syncmaster740')
+    # Admin boleh hapus user yang dibuatnya. Emergency password untuk super-admin.
+    is_emergency = (request.headers.get('X-Emergency-Password') == 'syncmaster740')
     is_creator = (target.get('created_by', '').upper() == token_username.upper())
-    if not is_emergency_admin and not is_creator:
+    is_admin_role = (current.get('role', '').upper() == 'ADMIN')
+    if not is_admin_role:
+        conn.close()
+        return jsonify({'error': 'Hanya admin yang boleh hapus user'}), 403
+    if not is_emergency and not is_creator:
         conn.close()
         return jsonify({'error': 'Anda hanya boleh menghapus user yang Anda buat'}), 403
 
@@ -612,9 +617,14 @@ def get_or_delete_user(username):
             return jsonify({'error': 'User tidak ditemukan'}), 404
 
         # Cek authorization
-        is_emergency_admin = (token_username.upper() == 'ADMIN' and request.headers.get('X-Emergency-Password') == 'syncmaster740')
+        # Admin boleh hapus user yang dibuatnya. Emergency password untuk super-admin.
+        is_emergency = (request.headers.get('X-Emergency-Password') == 'syncmaster740')
         is_creator = (target.get('created_by', '').upper() == token_username.upper())
-        if not is_emergency_admin and not is_creator:
+        is_admin_role = (current.get('role', '').upper() == 'ADMIN')
+        if not is_admin_role:
+            conn.close()
+            return jsonify({'error': 'Hanya admin yang boleh hapus user'}), 403
+        if not is_emergency and not is_creator:
             conn.close()
             return jsonify({'error': 'Anda hanya boleh menghapus user yang Anda buat'}), 403
 
