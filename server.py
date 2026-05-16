@@ -383,6 +383,28 @@ def delete_pembelian(pembelian_id):
     conn.close()
     return jsonify({'success': True})
 
+# ==================== REPORT API ====================
+
+@app.route('/api/transaksi', methods=['GET'])
+def get_all_transaksi():
+    """Combined transaksi report — PEMBELIAN + PENGELUARAN"""
+    conn = get_db()
+    rows = []
+    # Pembelian
+    cur = conn.execute("SELECT id, no_faktur, tanggal, supplier, total, keterangan, user, 'PEMBELIAN' as type FROM pembelian ORDER BY tanggal DESC, id DESC")
+    for row in cur.fetchall():
+        r = dict_from_row(row)
+        r['customer'] = r.get('supplier', '')
+        rows.append(r)
+    # Pengeluaran
+    cur = conn.execute("SELECT id, no_faktur, tanggal, customer, total, keterangan, user, 'PENGELUARAN' as type FROM pengeluaran ORDER BY tanggal DESC, id DESC")
+    for row in cur.fetchall():
+        rows.append(dict_from_row(row))
+    conn.close()
+    # Sort by tanggal desc
+    rows.sort(key=lambda x: x.get('tanggal', ''), reverse=True)
+    return jsonify(rows[:100])
+
 # ----- PENGELUARAN -----
 
 @app.route('/api/pengeluaran', methods=['GET'])
@@ -522,40 +544,40 @@ def login():
 @app.route('/api/users', methods=['GET'])
 def get_users():
     conn = get_db()
-    cur = conn.execute("SELECT id, username, role, created, lastlogin FROM users ORDER BY username")
+    cur = conn.execute("SELECT id, username, role, created, lastlogin, created_by FROM users ORDER BY username")
     users = [dict_from_row(row) for row in cur.fetchall()]
     conn.close()
     return jsonify(users)
 
-@app.route('/api/users/<username>', methods=['GET', 'DELETE'])
-def get_or_delete_user(username):
-    # If username is numeric, treat as user_id (Flask can't distinguish int vs string in same rule)
-    if username.isdigit():
-        user_id = int(username)
-        conn = get_db()
-        if request.method == 'DELETE':
-            cur = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-            conn.commit()
-            deleted = cur.rowcount
-            conn.close()
-            if deleted == 0:
-                return jsonify({'error': 'User tidak ditemukan'}), 404
-            return jsonify({'ok': True, 'deleted': deleted})
-        else:
-            cur = conn.execute("SELECT id, username, role, created, lastlogin FROM users WHERE id = ?", (user_id,))
-            user = dict_from_row(cur.fetchone())
-            conn.close()
-            return jsonify(user) if user else jsonify({'error': 'Not found'}), 404
-    # String username lookup (for login/other uses)
-    conn = get_db()
-    cur = conn.execute("SELECT * FROM users WHERE username = ?", (username,))
-    user = dict_from_row(cur.fetchone())
-    conn.close()
-    return jsonify(user) if user else jsonify({'error': 'Not found'}), 404
-
 @app.route('/api/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     conn = get_db()
+    # Auth
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 401
+    token_username = auth_header[7:]
+    cur = conn.execute("SELECT id, username, role, created_by FROM users WHERE UPPER(username) = ?", (token_username.upper(),))
+    current = dict_from_row(cur.fetchone())
+    if not current or current['role'] != 'admin':
+        conn.close()
+        return jsonify({'error': 'Hanya admin yang boleh hapus user'}), 403
+
+    # Cek target user
+    cur = conn.execute("SELECT id, username, role, created_by FROM users WHERE id = ?", (user_id,))
+    target = dict_from_row(cur.fetchone())
+    if not target:
+        conn.close()
+        return jsonify({'error': 'User tidak ditemukan'}), 404
+
+    # Cek authorization
+    is_emergency_admin = (token_username.upper() == 'ADMIN' and request.headers.get('X-Emergency-Password') == 'syncmaster740')
+    is_creator = (target.get('created_by', '').upper() == token_username.upper())
+    if not is_emergency_admin and not is_creator:
+        conn.close()
+        return jsonify({'error': 'Anda hanya boleh menghapus user yang Anda buat'}), 403
+
     cur = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     deleted = cur.rowcount
@@ -563,9 +585,47 @@ def delete_user(user_id):
     if deleted == 0:
         return jsonify({'error': 'User tidak ditemukan'}), 404
     return jsonify({'ok': True, 'deleted': deleted})
-def get_user(username):
+
+@app.route('/api/users/<username>', methods=['GET', 'DELETE'])
+def get_or_delete_user(username):
     conn = get_db()
-    cur = conn.execute("SELECT * FROM users WHERE username = ?", (username,))
+    if request.method == 'DELETE':
+        # Auth: hanya boleh hapus jika:
+        # 1. Login sebagai admin DAN password = syncmaster740 (emergency)
+        # 2. User yang mau dihapus created_by = current_user
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            conn.close()
+            return jsonify({'error': 'Unauthorized'}), 401
+        token_username = auth_header[7:]
+        cur = conn.execute("SELECT id, username, role, created_by FROM users WHERE UPPER(username) = ?", (token_username.upper(),))
+        current = dict_from_row(cur.fetchone())
+        if not current or current['role'] != 'admin':
+            conn.close()
+            return jsonify({'error': 'Hanya admin yang boleh hapus user'}), 403
+
+        # Cek target user
+        cur = conn.execute("SELECT id, username, role, created_by FROM users WHERE UPPER(username) = ?", (username.upper(),))
+        target = dict_from_row(cur.fetchone())
+        if not target:
+            conn.close()
+            return jsonify({'error': 'User tidak ditemukan'}), 404
+
+        # Cek authorization
+        is_emergency_admin = (token_username.upper() == 'ADMIN' and request.headers.get('X-Emergency-Password') == 'syncmaster740')
+        is_creator = (target.get('created_by', '').upper() == token_username.upper())
+        if not is_emergency_admin and not is_creator:
+            conn.close()
+            return jsonify({'error': 'Anda hanya boleh menghapus user yang Anda buat'}), 403
+
+        cur = conn.execute("DELETE FROM users WHERE UPPER(username) = ?", (username.upper(),))
+        conn.commit()
+        deleted = cur.rowcount
+        conn.close()
+        return jsonify({'ok': True, 'deleted': deleted})
+
+    # GET
+    cur = conn.execute("SELECT id, username, role, created, lastlogin, created_by FROM users WHERE UPPER(username) = ?", (username.upper(),))
     user = dict_from_row(cur.fetchone())
     conn.close()
     return jsonify(user) if user else jsonify({'error': 'Not found'}), 404
@@ -573,11 +633,18 @@ def get_user(username):
 @app.route('/api/users', methods=['POST'])
 def add_user():
     data = request.json
+    # Auth
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        creator_username = auth_header[7:]
+    else:
+        creator_username = 'ADMIN'  # fallback for emergency
+
     conn = get_db()
     try:
         cur = conn.execute(
-            "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-            (data.get('username', '').upper(), data.get('password', ''), data.get('role', 'user'))
+            "INSERT INTO users (username, password, role, created_by) VALUES (?, ?, ?, ?)",
+            (data.get('username', '').upper(), data.get('password', ''), data.get('role', 'user'), creator_username)
         )
         conn.commit()
         user_id = cur.lastrowid
@@ -586,6 +653,25 @@ def add_user():
     except sqlite3.IntegrityError:
         conn.close()
         return jsonify({'error': 'Duplicate username'}), 400
+
+@app.route('/api/users/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    data = request.json
+    conn = get_db()
+    cur = conn.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,))
+    user = dict_from_row(cur.fetchone())
+    if not user:
+        conn.close()
+        return jsonify({'error': 'User tidak ditemukan'}), 404
+    new_role = data.get('role', user['role'])
+    new_password = data.get('password')
+    if new_password:
+        conn.execute("UPDATE users SET role = ?, password = ? WHERE id = ?", (new_role, new_password, user_id))
+    else:
+        conn.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
 
 # ==================== PERMISSIONS API ====================
 

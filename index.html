@@ -716,7 +716,7 @@ body {
             <div class="accordion-group collapsed">
               <div class="settings-item" onclick="openSettings('lokasi')"><span class="icon">📍</span> LOKASI GUDANG</div>
               <div class="settings-item" onclick="openSettings('kota')"><span class="icon">🏙</span> KOTA</div>
-              <div class="settings-item" onclick="openSettings('customer')"><span class="icon">👤</span> CUSTOMER</div>
+              <div class="settings-item" onclick="openSettings('customer')"><span class="icon">👤</span> MUTASI</div>
               <div class="settings-item" onclick="openSettings('supplier')"><span class="icon">🏭</span> SUPPLIER</div>
               <div class="settings-item" onclick="openSettings('satuan')"><span class="icon">📦</span> SATUAN</div>
               <div class="settings-item" onclick="openSettings('kategori')"><span class="icon">🏷️</span> CATEGORY</div>
@@ -866,7 +866,7 @@ body {
     <div style="padding:8px 16px;display:flex;gap:6px;border-bottom:1px solid var(--border)">
       <button class="tab active" data-tfilter="all" onclick="switchReportTab(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">📄 SEMUA</button>
       <button class="tab" data-tfilter="PEMBELIAN" onclick="switchReportTab(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">🛒 PEMBELIAN</button>
-      <button class="tab" data-tfilter="PENGIRIMAN" onclick="switchReportTab(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">🚚 PENGIRIMAN</button>
+      <button class="tab" data-tfilter="PENGELUARAN" onclick="switchReportTab(this)" style="font-size:10px;padding:5px 12px;border-radius:6px">🚚 PENGELUARAN</button>
     </div>
 
     <!-- Report A4 Container -->
@@ -1207,8 +1207,8 @@ async function initAPI() {
       if (!settings[type]) settings[type] = [];
       const upperVal = (row.value||'').toUpperCase();
       if (!settings[type].includes(upperVal)) settings[type].push(upperVal);
-      // Cache ID for reverse lookup
-      window.settingsIdMap[row.type + '_' + upperVal] = row.id;
+      // Cache ID for reverse lookup (always lowercase type for consistent lookup)
+      window.settingsIdMap[type + '_' + upperVal] = row.id;
     });
     syncSettingsUppercase();
   } catch(e) { console.warn('Settings load failed', e); }
@@ -1591,13 +1591,26 @@ function saveUser(e) {
   if (!username || !role) { showToast('Username dan Role wajib diisi!', 'error'); return; }
   if (!editingUserId && !password) { showToast('Password wajib diisi untuk user baru!', 'error'); return; }
 
+  const token = localStorage.getItem('authToken') || currentUser.username;
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+  if (currentUser.username.toUpperCase() === 'ADMIN') {
+    headers['X-Emergency-Password'] = 'syncmaster740';
+  }
+
   if (editingUserId) {
-    const idx = users.findIndex(u => u.id === editingUserId);
-    if (idx >= 0) {
-      users[idx].role = role;
-      if (password) users[idx].password = password;
-    }
-    showToast('User berhasil diupdate!', 'success');
+    // Update via API
+    fetch(API_BASE + '/users/' + editingUserId, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ role, ...(password && { password }) })
+    }).then(res => res.json()).then((result) => {
+      if (result.error) { showToast(result.error, 'error'); return; }
+      const idx = users.findIndex(u => u.id === editingUserId);
+      if (idx >= 0) { users[idx].role = role; if (password) users[idx].password = password; }
+      showToast('User berhasil diupdate!', 'success');
+      renderUserTable();
+      closeUserModal();
+    }).catch(() => showToast('Gagal update user', 'error'));
   } else {
     if (users.find(u => u.username === username)) {
       showToast('Username sudah ada!', 'error'); return;
@@ -1605,19 +1618,16 @@ function saveUser(e) {
     // Add via API
     fetch(API_BASE + '/users', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ username, password, role })
     }).then(res => res.json()).then((result) => {
-      users.push({ id: result.id, username, password, role, created: new Date().toISOString(), lastLogin: null });
+      if (result.error) { showToast(result.error, 'error'); return; }
+      users.push({ id: result.id, username, password, role, created: new Date().toISOString(), lastlogin: null, created_by: currentUser.username });
       showToast('User berhasil ditambahkan!', 'success');
-    });
-    showToast('User berhasil ditambahkan!', 'success');
+      renderUserTable();
+      closeUserModal();
+    }).catch(() => { showToast('Gagal menambah user', 'error'); closeUserModal(); });
   }
-
-  closeUserModal();
-  renderUserTable();
-  updateLoginUserList();
-  renderUserSwitchList();
 }
 
 function openDeleteUser(id) {
@@ -1629,6 +1639,36 @@ function openDeleteUser(id) {
   document.getElementById('deleteMsg').textContent = 'Yakin hapus user ini?';
   document.getElementById('deleteItemName').textContent = `${u.username} (${u.role.toUpperCase()})`;
   document.getElementById('deleteModal').classList.add('show');
+}
+
+function closeDeleteModal() {
+  document.getElementById('deleteModal').classList.remove('show');
+  deleteTarget = null;
+  deleteType = null;
+}
+
+function confirmDelete() {
+  if (!deleteTarget || !deleteType) return;
+
+  if (deleteType === 'user') {
+    const token = localStorage.getItem('authToken') || currentUser.username;
+    const headers = { 'Authorization': 'Bearer ' + token };
+    console.log('DELETE user headers:', headers);
+    console.log('deleteTarget:', deleteTarget, 'currentUser:', currentUser);
+    if (currentUser.username.toUpperCase() === 'ADMIN') {
+      headers['X-Emergency-Password'] = 'syncmaster740';
+    }
+    fetch(API_BASE + '/users/' + deleteTarget, { method: 'DELETE', headers })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) { showToast(data.error, 'error'); closeDeleteModal(); return; }
+        users = users.filter(u => u.id !== deleteTarget);
+        renderUserTable();
+        closeDeleteModal();
+        showToast('User berhasil dihapus!', 'success');
+      })
+      .catch(() => { showToast('Gagal menghapus user!', 'error'); closeDeleteModal(); });
+  }
 }
 
 /* ================================================
@@ -1984,7 +2024,7 @@ function openDetail(id) {
       <div class="detail-item"><div class="detail-label">LOKASI</div><div class="detail-value">${item.lokasi||'—'}</div></div>
       <div class="detail-item"><div class="detail-label">KOTA</div><div class="detail-value">${item.kota||'—'}</div></div>
       <div class="detail-item"><div class="detail-label">SUPPLIER</div><div class="detail-value">${item.supplier||'—'}</div></div>
-      <div class="detail-item"><div class="detail-label">CUSTOMER</div><div class="detail-value">${item.customer||'—'}</div></div>
+      <div class="detail-item"><div class="detail-label">MUTASI</div><div class="detail-value">${item.customer||'—'}</div></div>
       <div class="detail-item"><div class="detail-label">NORMAL</div><div class="detail-value">${item.min_stok||10} ${item.satuan||''}</div></div>
       ${item.high_stok ? '<div class="detail-item"><div class="detail-label">HIGH</div><div class="detail-value">${item.high_stok} ${item.satuan||""}</div></div>' : ''}
       ${item.low_stok ? '<div class="detail-item"><div class="detail-label">LOW</div><div class="detail-value">${item.low_stok} ${item.satuan||""}</div></div>' : ''}
@@ -2073,7 +2113,7 @@ function confirmDelete() {
 function openSettings(type) {
   if (!can(type)) { showToast('Akses ditolak — tidak punya izin', 'error'); return; }
   currentSettingType = type;
-  const titles = { lokasi:'📍 LOKASI GUDANG', kota:'🏙 KOTA', customer:'👤 CUSTOMER', supplier:'🏭 SUPPLIER', satuan:'📦 SATUAN', kategori:'🏷️ CATEGORY' };
+  const titles = { lokasi:'📍 LOKASI GUDANG', kota:'🏙 KOTA', customer:'👤 MUTASI', supplier:'🏭 SUPPLIER', satuan:'📦 SATUAN', kategori:'🏷️ CATEGORY' };
   document.getElementById('settingsTitle').textContent = titles[type] || type.toUpperCase();
   document.getElementById('newSettingValue').value = '';
   renderSettingsList();
@@ -2542,7 +2582,7 @@ function renderA4Report(container, filtered, allData) {
   const subtitles = {
     'all': 'LAPORAN SEMUA TRANSAKSI',
     'PEMBELIAN': 'LAPORAN MASUKAN BARANG',
-    'PENGIRIMAN': 'LAPORAN KELUAR BARANG'
+    'PENGELUARAN': 'LAPORAN KELUAR BARANG'
   };
 
   // Only render the ACTIVE page (tab controls which one shows)
@@ -2587,7 +2627,7 @@ function buildReportPage(header, subtitle, rows, allData) {
   const isSemua = rows.length === allData.length;
   if (isSemua) {
     const beli = allData.filter(t => t.type === 'PEMBELIAN').length;
-    const kirim = allData.filter(t => t.type === 'PENGIRIMAN').length;
+    const kirim = allData.filter(t => t.type === 'PENGELUARAN').length;
     html += `<div style="display:flex;gap:8px;margin-bottom:4px">
       <div style="flex:1;border:1px solid #333;padding:6px 8px;text-align:center">
         <div style="font-size:20px;font-weight:bold">${allData.length}</div>
@@ -2599,7 +2639,7 @@ function buildReportPage(header, subtitle, rows, allData) {
       </div>
       <div style="flex:1;border:1px solid #333;padding:6px 8px;text-align:center;background:#ffebee">
         <div style="font-size:20px;font-weight:bold;color:#c62828">${kirim}</div>
-        <div style="font-size:10px;color:#555">PENGIRIMAN</div>
+        <div style="font-size:10px;color:#555">PENGELUARAN</div>
       </div>
     </div>`;
   } else {
@@ -2609,7 +2649,7 @@ function buildReportPage(header, subtitle, rows, allData) {
     html += `<div style="display:flex;gap:8px;margin-bottom:4px">
       <div style="flex:1;border:1px solid ${isBeli ? '#2e7d32' : '#c62828'};padding:6px 8px;text-align:center;background:${isBeli ? '#e8f5e9' : '#ffebee'}">
         <div style="font-size:20px;font-weight:bold;color:${isBeli ? '#2e7d32' : '#c62828'}">${cnt}</div>
-        <div style="font-size:10px;color:#555">${isBeli ? 'PEMBELIAN' : 'PENGIRIMAN'}</div>
+        <div style="font-size:10px;color:#555">${isBeli ? 'PEMBELIAN' : 'PENGELUARAN'}</div>
       </div>
     </div>`;
   }
@@ -2634,7 +2674,7 @@ function buildReportPage(header, subtitle, rows, allData) {
     rows.forEach((t, i) => {
       const bg = i % 2 === 0 ? '#fafafa' : '#fff';
       const isBeli = t.type === 'PEMBELIAN';
-      const badge = isBeli ? 'PEMBELIAN' : 'PENGIRIMAN';
+      const badge = isBeli ? 'PEMBELIAN' : 'PENGELUARAN';
       const badgeBg = isBeli ? '#e8f5e9' : '#ffebee';
       const badgeColor = isBeli ? '#2e7d32' : '#c62828';
       html += `<tr style="background:${bg}">
@@ -2710,7 +2750,7 @@ async function openTransaksiForm(type) {
   if (!m) { m = modal; }
   window.tfType = type;
   window.tfItems = [];
-  document.getElementById('tfTitle').textContent = type === 'PEMBELIAN' ? '🛒 FAKTUR PEMBELIAN' : '🚚 FAKTUR PENGIRIMAN';
+  document.getElementById('tfTitle').textContent = type === 'PEMBELIAN' ? '🛒 FAKTUR PEMBELIAN' : '🚚 FAKTUR PENGELUARAN';
   document.getElementById('tfTanggal').value = new Date().toISOString().split('T')[0];
   document.getElementById('tfKeterangan').value = '';
   // Auto-fetch next faktur number based on date + type
@@ -2727,9 +2767,9 @@ async function openTransaksiForm(type) {
       document.getElementById('tfPartyList').innerHTML = data.map(function(s){return '<option value="'+s.value+'">';}).join('');
     });
   } else {
-    document.getElementById('tfPartyLabel').textContent = 'CUSTOMER';
-    document.getElementById('tfParty').placeholder = 'Ketik atau pilih customer...';
-    fetch(API_BASE + '/settings/customer').then(r=>r.json()).then(function(data){
+    document.getElementById('tfPartyLabel').textContent = 'MUTASI';
+    document.getElementById('tfParty').placeholder = 'Ketik atau pilih mutasi...';
+    fetch(API_BASE + '/settings/mutasi').then(r=>r.json()).then(function(data){
       document.getElementById('tfPartyList').innerHTML = data.map(function(s){return '<option value="'+s.value+'">';}).join('');
     });
   }
@@ -2778,6 +2818,7 @@ function closeTransaksiForm() { document.getElementById('transaksiFormModal').cl
 async function submitTransaksi() {
   var party = document.getElementById('tfParty').value.trim();
   var keterangan = document.getElementById('tfKeterangan').value.trim();
+  var tanggal = document.getElementById('tfTanggal').value;
   if (!tanggal) { showToast('Tanggal wajib diisi', 'error'); return; }
   if (!window.tfItems.length) { showToast('Tambah minimal 1 item', 'error'); return; }
   var total = window.tfItems.reduce(function(s,i){return s+i.subtotal;}, 0);
@@ -2814,7 +2855,7 @@ async function viewTransaksi(id, type) {
         '<div><div style="font-size:14px;font-weight:800;letter-spacing:2px">'+t.no_faktur+'</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">'+t.tanggal+' · '+t.user+'</div></div>' +
         '<div style="font-size:11px;padding:3px 10px;border-radius:4px;background:'+(isBeli?'var(--success-dim)':'var(--danger-dim)')+';color:'+(isBeli?'var(--success)':'var(--danger)')+';font-weight:700">'+(isBeli?'PEMBELIAN':'PENGELUARAN')+'</div>' +
       '</div>' +
-      '<div style="font-size:11px;background:var(--surface);padding:10px;border-radius:6px"><div style="color:var(--text-muted);margin-bottom:2px">'+(isBeli?'SUPPLIER':'CUSTOMER')+'</div><div style="font-weight:700">'+(isBeli?(t.supplier||'-'):(t.customer||'-'))+'</div></div>' +
+      '<div style="font-size:11px;background:var(--surface);padding:10px;border-radius:6px"><div style="color:var(--text-muted);margin-bottom:2px">'+(isBeli?'SUPPLIER':'MUTASI')+'</div><div style="font-weight:700">'+(isBeli?(t.supplier||'-'):(t.customer||'-'))+'</div></div>' +
       '<div style="display:flex;flex-direction:column;gap:6px">'+itemsHtml+'</div>' +
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--accent-dim);border-radius:8px"><div style="font-size:11px;letter-spacing:1px;font-weight:700">TOTAL</div><div style="font-size:18px;font-weight:800;color:var(--accent)">Rp '+(t.total||0).toLocaleString('id')+'</div></div>' +
       (t.keterangan?'<div style="font-size:10px;color:var(--text-muted)">'+t.keterangan+'</div>':'') +
