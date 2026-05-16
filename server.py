@@ -7,6 +7,7 @@ Connects to SQLite database in db/stock.db
 import sqlite3
 import json
 import os
+from datetime import datetime
 from flask import Flask, send_file, request, jsonify
 from functools import wraps
 
@@ -242,6 +243,47 @@ def add_movement():
 
 # ==================== TRANSAKSI API ====================
 
+def generate_next_faktur(transaksi_type, tanggal):
+    """
+    Generate next faktur number: F2605/0001
+    Format: F + YY + MM + / + 4-digit sequential (reset per month per type)
+    """
+    year = tanggal[2:4]  # '26'
+    month = tanggal[5:7]  # '05'
+    prefix = f"F{year}{month}"  # 'F2605'
+    
+    # Find highest existing faktur for this month/type
+    pattern = f"{prefix}%"
+    conn = get_db()
+    cur = conn.execute(
+        "SELECT no_faktur FROM transaksi WHERE no_faktur LIKE ? AND type = ? ORDER BY no_faktur DESC LIMIT 1",
+        (pattern, transaksi_type.upper())
+    )
+    row = cur.fetchone()
+    conn.close()
+    
+    if row:
+        last = row['no_faktur']  # e.g. "F2605/0037"
+        parts = last.split('/')
+        if len(parts) == 2:
+            seq = int(parts[1]) + 1
+        else:
+            seq = 1
+    else:
+        seq = 1
+    
+    return f"{prefix}/{seq:04d}"
+
+@app.route('/api/next-faktur', methods=['GET'])
+def get_next_faktur():
+    """Get next auto-generated faktur number"""
+    t_type = request.args.get('type', 'PEMBELIAN').upper()
+    tanggal = request.args.get('tanggal', '')
+    if not tanggal:
+        tanggal = datetime.now().strftime('%Y-%m-%d')
+    next_no = generate_next_faktur(t_type, tanggal)
+    return jsonify({'no_faktur': next_no})
+
 @app.route('/api/transaksi', methods=['GET'])
 def get_transaksi():
     t_type = request.args.get('type')
@@ -279,13 +321,22 @@ def add_transaksi():
     data = request.json
     conn = get_db()
     try:
+        # Auto-generate no_faktur if not provided
+        no_faktur = data.get('no_faktur', '').strip()
+        transaksi_type = data.get('type', '').upper()
+        tanggal = data.get('tanggal', '')
+        if not no_faktur:
+            no_faktur = generate_next_faktur(transaksi_type, tanggal)
+        else:
+            no_faktur = no_faktur.upper()
+
         cur = conn.execute("""
             INSERT INTO transaksi (no_faktur, type, tanggal, supplier, customer, total, keterangan, user, created)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         """, (
-            data.get('no_faktur', '').upper(),
-            data.get('type', '').upper(),
-            data.get('tanggal', ''),
+            no_faktur,
+            transaksi_type,
+            tanggal,
             data.get('supplier', '').upper(),
             data.get('customer', '').upper(),
             data.get('total', 0),

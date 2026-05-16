@@ -2677,7 +2677,7 @@ async function openTransaksiForm(type) {
       '</div>' +
       '<div style="padding:16px;display:flex;flex-direction:column;gap:12px">' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
-          '<div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">NO. FAKTUR</div><input id="tfNoFaktur" class="form-input" placeholder="FB-001" style="width:100%"></div>' +
+          '<div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">NO. FAKTUR</div><div id="tfNoFakturDisplay" style="font-size:15px;font-weight:800;letter-spacing:2px;color:var(--accent);padding:8px 12px;background:var(--surface);border-radius:6px;border:1px solid var(--border)">MEMUAT...</div></div>' +
           '<div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">TANGGAL</div><input id="tfTanggal" type="date" class="form-input" style="width:100%"></div>' +
         '</div>' +
         '<div id="tfPartyDiv">' +
@@ -2712,8 +2712,14 @@ async function openTransaksiForm(type) {
   window.tfItems = [];
   document.getElementById('tfTitle').textContent = type === 'PEMBELIAN' ? '🛒 FAKTUR PEMBELIAN' : '🚚 FAKTUR PENGIRIMAN';
   document.getElementById('tfTanggal').value = new Date().toISOString().split('T')[0];
-  document.getElementById('tfNoFaktur').value = '';
   document.getElementById('tfKeterangan').value = '';
+  // Auto-fetch next faktur number based on date + type
+  var tgl = new Date().toISOString().split('T')[0];
+  document.getElementById('tfNoFakturDisplay').textContent = 'MEMUAT...';
+  fetch(API_BASE + '/next-faktur?type=' + type + '&tanggal=' + tgl).then(function(r){return r.json();}).then(function(d){
+    document.getElementById('tfNoFakturDisplay').textContent = d.no_faktur || 'ERROR';
+    window.tfAutoFaktur = d.no_faktur;
+  }).catch(function(){ document.getElementById('tfNoFakturDisplay').textContent = '-'; });
   if (type === 'PEMBELIAN') {
     document.getElementById('tfPartyLabel').textContent = 'SUPPLIER';
     document.getElementById('tfParty').placeholder = 'Ketik atau pilih supplier...';
@@ -2770,7 +2776,7 @@ function removeTfItem(idx) { window.tfItems.splice(idx, 1); renderTfItems(); }
 function closeTransaksiForm() { document.getElementById('transaksiFormModal').classList.remove('show'); }
 
 async function submitTransaksi() {
-  var noFaktur = document.getElementById('tfNoFaktur').value.trim();
+  var noFaktur = window.tfAutoFaktur || '';
   var tanggal = document.getElementById('tfTanggal').value;
   var party = document.getElementById('tfParty').value.trim();
   var keterangan = document.getElementById('tfKeterangan').value.trim();
