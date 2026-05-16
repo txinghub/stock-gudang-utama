@@ -2554,8 +2554,13 @@ function renderA4Report(container, filtered, allData) {
 
 function buildReportPage(header, subtitle, rows, allData) {
   const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-  const pageW = 210, pageH = 297; // mm A4
-  const margin = 15; // mm
+  // Format tanggal DD-MM-YYYY
+  const fmtDate = (d) => {
+    if (!d) return '-';
+    const part = d.split('T')[0];
+    const [y, m, day] = part.split('-');
+    return `${day}-${m}-${y}`;
+  };
 
   let html = `<div style="
     width:210mm;
@@ -2634,7 +2639,7 @@ function buildReportPage(header, subtitle, rows, allData) {
       const badgeColor = isBeli ? '#2e7d32' : '#c62828';
       html += `<tr style="background:${bg}">
         <td style="padding:5px 6px;border:1px solid #ddd;font-weight:bold;font-size:11px">${t.no_faktur || '-'}</td>
-        <td style="padding:5px 6px;border:1px solid #ddd;text-align:center;font-size:11px">${t.tanggal || '-'}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;text-align:center;font-size:11px">${fmtDate(t.tanggal)}</td>
         <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px">${t.supplier || t.customer || '-'}</td>
         <td style="padding:5px 6px;border:1px solid #ddd;text-align:center">
           <span style="background:${badgeBg};color:${badgeColor};font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px">${badge}</span>
