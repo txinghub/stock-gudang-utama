@@ -3122,19 +3122,20 @@ function renderReport() {
   const dateEnd = document.getElementById('reportDateEnd').value;
   if (!dateStart) return;
 
-  // Filter movements by date range
-  const filtered = movements.filter(m => {
-    if (!m.tanggal) return false;
-    const d = m.tanggal.split(' ')[0];
-    return d >= dateStart && d <= (dateEnd || dateStart);
-  });
+  // Fetch fresh data from server API then filter
+  fetch(API_BASE + '/movements').then(res => res.json()).then(allMovements => {
+    const filtered = allMovements.filter(m => {
+      if (!m.tanggal) return false;
+      const d = m.tanggal.split(' ')[0];
+      return d >= dateStart && d <= (dateEnd || dateStart);
+    });
 
-  currentReportData.masuk = filtered.filter(m => m.type === 'MASUK');
-  currentReportData.keluar = filtered.filter(m => m.type === 'KELUAR');
+    currentReportData.masuk = filtered.filter(m => m.type === 'MASUK');
+    currentReportData.keluar = filtered.filter(m => m.type === 'KELUAR');
 
-  const summary = document.getElementById('reportSummary');
-  if (currentReportType === 'gabungan') {
-    summary.innerHTML = `
+    const summary = document.getElementById('reportSummary');
+    if (currentReportType === 'gabungan') {
+      summary.innerHTML = `
       <div style="flex:1;min-width:120px;background:var(--success-dim);border-radius:8px;padding:10px;text-align:center">
         <div style="font-size:9px;letter-spacing:2px;color:var(--success);margin-bottom:4px">MASUK</div>
         <div style="font-size:22px;font-weight:800;color:var(--success)">${currentReportData.masuk.length}</div>
@@ -3150,74 +3151,77 @@ function renderReport() {
         <div style="font-size:22px;font-weight:800;color:var(--info)">${currentReportData.masuk.length - currentReportData.keluar.length}</div>
         <div style="font-size:10px;color:var(--text-muted)">item</div>
       </div>`;
-  } else {
-    const count = currentReportType === 'masuk' ? currentReportData.masuk.length : currentReportData.keluar.length;
-    const color = currentReportType === 'masuk' ? 'var(--success)' : 'var(--danger)';
-    const bg = currentReportType === 'masuk' ? 'var(--success-dim)' : 'var(--danger-dim)';
-    summary.innerHTML = `
+    } else {
+      const count = currentReportType === 'masuk' ? currentReportData.masuk.length : currentReportData.keluar.length;
+      const color = currentReportType === 'masuk' ? 'var(--success)' : 'var(--danger)';
+      const bg = currentReportType === 'masuk' ? 'var(--success-dim)' : 'var(--danger-dim)';
+      summary.innerHTML = `
       <div style="flex:1;background:${bg};border-radius:8px;padding:10px;text-align:center">
         <div style="font-size:9px;letter-spacing:2px;color:${color};margin-bottom:4px">${currentReportType === 'masuk' ? 'MASUK' : 'KELUAR'}</div>
         <div style="font-size:28px;font-weight:800;color:${color}">${count}</div>
         <div style="font-size:10px;color:var(--text-muted)">item</div>
       </div>`;
-  }
-
-  const content = document.getElementById('reportContent');
-  let rows = [];
-
-  if (currentReportType === 'masuk' || currentReportType === 'gabungan') {
-    if (currentReportData.masuk.length > 0) {
-      rows.push('<div style="padding:8px 12px;background:var(--success-dim);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--success)">📥 MASUK</span></div>');
-      rows.push(`<table style="width:100%;border-collapse:collapse;font-size:11px">
-        <tr style="background:var(--surface-active)">
-          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">TANGGAL</th>
-          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">ITEM</th>
-          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">KODE</th>
-          <th style="padding:6px 10px;text-align:right;font-size:9px;letter-spacing:1px;color:var(--text-muted)">QTY</th>
-          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">CATATAN</th>
-        </tr>`);
-      currentReportData.masuk.forEach(m => {
-        rows.push(`<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 10px;color:var(--text-secondary)">${m.tanggal}</td>
-          <td style="padding:6px 10px;color:var(--text)">${m.item_nama}</td>
-          <td style="padding:6px 10px;color:var(--text-secondary)">${m.kode||'—'}</td>
-          <td style="padding:6px 10px;text-align:right;color:var(--success);font-weight:700">+${m.jumlah} ${m.satuan||''}</td>
-          <td style="padding:6px 10px;color:var(--text-muted);font-size:10px">${m.catatan||''}</td>
-        </tr>`);
-      });
-      rows.push('</table>');
-    } else {
-      rows.push('<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">Tidak ada data masuk</div>');
     }
-  }
 
-  if (currentReportType === 'keluar' || currentReportType === 'gabungan') {
-    if (currentReportData.keluar.length > 0) {
-      rows.push('<div style="padding:8px 12px;background:var(--danger-dim);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--danger)">📤 KELUAR</span></div>');
-      rows.push(`<table style="width:100%;border-collapse:collapse;font-size:11px">
-        <tr style="background:var(--surface-active)">
-          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">TANGGAL</th>
-          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">ITEM</th>
-          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">KODE</th>
-          <th style="padding:6px 10px;text-align:right;font-size:9px;letter-spacing:1px;color:var(--text-muted)">QTY</th>
-          <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">CATATAN</th>
-        </tr>`);
-      currentReportData.keluar.forEach(m => {
-        rows.push(`<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 10px;color:var(--text-secondary)">${m.tanggal}</td>
-          <td style="padding:6px 10px;color:var(--text)">${m.item_nama}</td>
-          <td style="padding:6px 10px;color:var(--text-secondary)">${m.kode||'—'}</td>
-          <td style="padding:6px 10px;text-align:right;color:var(--danger);font-weight:700">-${m.jumlah} ${m.satuan||''}</td>
-          <td style="padding:6px 10px;color:var(--text-muted);font-size:10px">${m.catatan||''}</td>
-        </tr>`);
-      });
-      rows.push('</table>');
-    } else {
-      rows.push('<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">Tidak ada data keluar</div>');
+    const content = document.getElementById('reportContent');
+    let rows = [];
+
+    if (currentReportType === 'masuk' || currentReportType === 'gabungan') {
+      if (currentReportData.masuk.length > 0) {
+        rows.push('<div style="padding:8px 12px;background:var(--success-dim);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--success)">📥 MASUK</span></div>');
+        rows.push(`<table style="width:100%;border-collapse:collapse;font-size:11px">
+          <tr style="background:var(--surface-active)">
+            <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">TANGGAL</th>
+            <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">ITEM</th>
+            <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">KODE</th>
+            <th style="padding:6px 10px;text-align:right;font-size:9px;letter-spacing:1px;color:var(--text-muted)">QTY</th>
+            <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">CATATAN</th>
+          </tr>`);
+        currentReportData.masuk.forEach(m => {
+          rows.push(`<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 10px;color:var(--text-secondary)">${m.tanggal}</td>
+            <td style="padding:6px 10px;color:var(--text)">${m.item_nama}</td>
+            <td style="padding:6px 10px;color:var(--text-secondary)">${m.kode||'—'}</td>
+            <td style="padding:6px 10px;text-align:right;color:var(--success);font-weight:700">+${m.jumlah} ${m.satuan||''}</td>
+            <td style="padding:6px 10px;color:var(--text-muted);font-size:10px">${m.catatan||''}</td>
+          </tr>`);
+        });
+        rows.push('</table>');
+      } else {
+        rows.push('<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">Tidak ada data masuk</div>');
+      }
     }
-  }
 
-  content.innerHTML = rows.join('');
+    if (currentReportType === 'keluar' || currentReportType === 'gabungan') {
+      if (currentReportData.keluar.length > 0) {
+        rows.push('<div style="padding:8px 12px;background:var(--danger-dim);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--danger)">📤 KELUAR</span></div>');
+        rows.push(`<table style="width:100%;border-collapse:collapse;font-size:11px">
+          <tr style="background:var(--surface-active)">
+            <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">TANGGAL</th>
+            <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">ITEM</th>
+            <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">KODE</th>
+            <th style="padding:6px 10px;text-align:right;font-size:9px;letter-spacing:1px;color:var(--text-muted)">QTY</th>
+            <th style="padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">CATATAN</th>
+          </tr>`);
+        currentReportData.keluar.forEach(m => {
+          rows.push(`<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 10px;color:var(--text-secondary)">${m.tanggal}</td>
+            <td style="padding:6px 10px;color:var(--text)">${m.item_nama}</td>
+            <td style="padding:6px 10px;color:var(--text-secondary)">${m.kode||'—'}</td>
+            <td style="padding:6px 10px;text-align:right;color:var(--danger);font-weight:700">-${m.jumlah} ${m.satuan||''}</td>
+            <td style="padding:6px 10px;color:var(--text-muted);font-size:10px">${m.catatan||''}</td>
+          </tr>`);
+        });
+        rows.push('</table>');
+      } else {
+        rows.push('<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">Tidak ada data keluar</div>');
+      }
+    }
+
+    content.innerHTML = rows.join('');
+  }).catch(e => {
+    document.getElementById('reportContent').innerHTML = '<div style="padding:20px;text-align:center;color:var(--danger)">Gagal memuat data</div>';
+  });
 }
 
 function exportReport(fmt) {
