@@ -642,6 +642,23 @@ body {
 }
 .user-switch-footer .btn { width: 100%; justify-content: center; }
 </style>
+<style>
+@media print {
+  body * { visibility: hidden; }
+  #fakturPrintContent, #fakturPrintContent * { visibility: visible; }
+  #fakturPrintContent {
+    position: absolute; left: 0; top: 0;
+    width: 190mm;
+    padding: 10mm;
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    color: #000;
+    background: #fff;
+  }
+  #fakturPrintContent table { page-break-inside: auto; }
+  #fakturPrintContent tr { page-break-inside: avoid; }
+}
+</style>
 </head>
 <body>
 
@@ -2747,6 +2764,7 @@ async function openTransaksiForm(type) {
           '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">' +
             '<select id="tfItemSelect" class="form-input" style="flex:1"><option value="">— Pilih Item —</option></select>' +
             '<input id="tfQty" type="number" class="form-input" placeholder="Qty" value="1" min="1" style="width:80px">' +
+            '<input id="tfHarga" type="number" class="form-input" placeholder="Harga" value="0" min="0" style="width:110px">' +
             '<button class="btn btn-ghost" onclick="addTransaksiItem()" style="padding:7px 12px;font-size:11px">＋ TAMBAH</button>' +
           '</div>' +
         '</div>' +
@@ -2805,11 +2823,14 @@ function addTransaksiItem() {
   if (!sel.value) { showToast('Pilih item dulu', 'error'); return; }
   const qty = parseInt(document.getElementById('tfQty').value) || 0;
   if (qty <= 0) { showToast('Qty harus lebih dari 0', 'error'); return; }
-  const item = { item_id: parseInt(sel.value), nama: opt.dataset.nama, satuan: opt.dataset.satuan, qty: qty };
+  const item = { item_id: parseInt(sel.value), nama: opt.dataset.nama, satuan: opt.dataset.satuan, qty: qty, harga: parseInt(document.getElementById('tfHarga').value) || 0 };
   const exist = window.tfItems.findIndex(function(i){return i.item_id === item.item_id;});
   if (exist >= 0) {
     window.tfItems[exist].qty += qty;
+    window.tfItems[exist].harga = item.harga;
+    window.tfItems[exist].subtotal = window.tfItems[exist].qty * window.tfItems[exist].harga;
   } else {
+    item.subtotal = item.qty * item.harga;
     window.tfItems.push(item);
   }
   renderTfItems();
@@ -2820,17 +2841,80 @@ function addTransaksiItem() {
 function renderTfItems() {
   const el = document.getElementById('tfItemsList');
   el.innerHTML = window.tfItems.map(function(it, idx) {
+    var itemSubtotal = (it.subtotal || (it.qty * it.harga)).toLocaleString('id');
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface);border-radius:6px;font-size:11px">' +
-      '<div><span style="font-weight:700">'+it.nama+'</span> <span style="color:var(--text-muted)">'+it.qty+' '+it.satuan+'</span></div>' +
+      '<div><span style="font-weight:700">'+it.nama+'</span> <span style="color:var(--text-muted)">'+it.qty+' '+it.satuan+'</span> <span style="color:var(--accent)">@Rp '+itemSubtotal+'</span></div>' +
       '<button onclick="removeTfItem('+idx+')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px">✕</button>' +
     '</div>';
   }).join('');
-  document.getElementById('tfTotal').style.display = 'none';
+  // Show grand total
+  var grandTotal = window.tfItems.reduce(function(s,i){return s+(i.subtotal||(i.qty*i.harga));},0);
+  document.getElementById('tfTotal').textContent = 'Rp ' + grandTotal.toLocaleString('id');
+  document.getElementById('tfTotal').style.display = 'flex';
 }
 
 function removeTfItem(idx) { window.tfItems.splice(idx, 1); renderTfItems(); }
 
 function closeTransaksiForm() { document.getElementById('transaksiFormModal').classList.remove('show'); }
+
+function showFakturPrintDialog(data) {
+  var isBeli = data.type === 'PEMBELIAN';
+  var partyName = isBeli ? (data.supplier || '-') : (data.customer || '-');
+  var partyLabel = isBeli ? 'SUPPLIER' : 'MUTASI';
+  var itemsRows = data.items.map(function(it, i) {
+    var harga = it.harga || 0;
+    var qty = it.qty || 0;
+    var sub = it.subtotal || (harga * qty);
+    return '<tr>' +
+      '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + (i+1) + '</td>' +
+      '<td style="padding:4px 6px;border:1px solid #ddd;font-size:10px;font-weight:700">' + (it.nama || '-') + '</td>' +
+      '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + qty + '</td>' +
+      '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + (it.satuan || '-') + '</td>' +
+      '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px">Rp ' + harga.toLocaleString('id') + '</td>' +
+      '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px;font-weight:700">Rp ' + sub.toLocaleString('id') + '</td>' +
+    '</tr>';
+  }).join('');
+  var grandTotal = data.total || data.items.reduce(function(s,i){return s+(i.subtotal||(i.qty*i.harga));},0);
+  var fakturHtml = '<div id="fakturPrintContent" style="font-family:Arial,sans-serif;">' +
+    '<div style="text-align:center;border-bottom:2px solid #333;padding-bottom:8px;margin-bottom:8px">' +
+      '<div style="font-size:16px;font-weight:bold;letter-spacing:2px">FAKTUR PEMBELIAN</div>' +
+      '<div style="font-size:20px;font-weight:bold;letter-spacing:3px;margin-top:4px">' + (data.no_faktur||'-') + '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px">' +
+      '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">TANGGAL</div><div style="font-weight:700">' + (data.tanggal||'-') + '</div></div>' +
+      '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">' + partyLabel + '</div><div style="font-weight:700">' + partyName + '</div></div>' +
+      '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">PETUGAS</div><div style="font-weight:700">' + (data.user||'-') + '</div></div>' +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6px">' +
+      '<thead><tr style="background:#333;color:#fff">' +
+        '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:center">NO</th>' +
+        '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:left">NAMA ITEM</th>' +
+        '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:center">QTY</th>' +
+        '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:center">SATUAN</th>' +
+        '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:right">HARGA</th>' +
+        '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:right">SUBTOTAL</th>' +
+      '</tr></thead><tbody>' + itemsRows + '</tbody>' +
+    '</table>' +
+    '<div style="display:flex;justify-content:flex-end;padding:8px;background:#f5f5f5;border-radius:4px;margin-bottom:6px">' +
+      '<div style="font-size:10px;letter-spacing:1px;color:#888;margin-right:16px">GRAND TOTAL</div>' +
+      '<div style="font-size:16px;font-weight:bold;color:#333">Rp ' + grandTotal.toLocaleString('id') + '</div>' +
+    '</div>' +
+    (data.keterangan ? '<div style="font-size:9px;color:#888;margin-bottom:6px">CATATAN: ' + data.keterangan + '</div>' : '') +
+  '</div>';
+  var overlay = document.createElement('div');
+  overlay.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:600px;width:90%;font-family:Arial,sans-serif">' +
+    '<div style="font-size:14px;font-weight:800;margin-bottom:16px;text-align:center;letter-spacing:2px">PRINT FAKTUR</div>' +
+    '<div style="margin-bottom:16px;max-height:400px;overflow-y:auto;border:1px solid #ddd;padding:16px;background:#fafafa">' + fakturHtml + '</div>' +
+    '<div style="display:flex;justify-content:flex-end;gap:10px">' +
+      '<button onclick="document.getElementById(\'printOverlay\').remove();window.print()" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
+      '<button onclick="document.getElementById(\'printOverlay\').remove()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">TIDAK</button>' +
+    '</div>' +
+  '</div>';
+  overlay.id = 'printOverlay';
+  overlay.onclick = function(e) { if(e.target===overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
 
 async function submitTransaksi() {
   var party = document.getElementById('tfParty').value.trim();
@@ -2853,7 +2937,19 @@ async function submitTransaksi() {
     var res = await fetch(API_BASE + endpoint, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if (!res.ok) { var err = await res.json(); showToast(err.error||'Gagal simpan','error'); return; }
     showToast('Faktur berhasil disimpan!', 'success');
+    var savedData = {
+      no_faktur: window.tfAutoFaktur || '',
+      tanggal: document.getElementById('tfTanggal').value,
+      supplier: isBeli ? party : '',
+      customer: isBeli ? '' : party,
+      keterangan: keterangan,
+      user: currentUser ? currentUser.username : 'ADMIN',
+      items: window.tfItems,
+      total: total,
+      type: window.tfType
+    };
     closeTransaksiForm();
+    showFakturPrintDialog(savedData);
     var r = await fetch(API_BASE + '/items'); items = await r.json();
     renderCards(); updateStats();
     if (document.getElementById('pageTransaksi').classList.contains('active')) loadReport();
