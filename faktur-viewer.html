@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faktur Viewer — Stock Gudang Utama</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #0f3460, #16213e); padding: 20px 24px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid #0f3460; }
+  .back-btn { background: #e94560; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+  .back-btn:hover { background: #c73e54; }
+  .header-title { font-size: 20px; font-weight: 700; color: #fff; }
+  .header-sub { font-size: 12px; color: #888; }
+
+  .tabs { display: flex; gap: 2px; padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+  .tab { padding: 10px 24px; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; background: #1a1a2e; color: #888; }
+  .tab.active { background: #1a1a2e; color: #fff; border-bottom: 3px solid #e94560; }
+  .tab:hover:not(.active) { background: #22223a; color: #ccc; }
+  .tab .badge { background: #e94560; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 6px; }
+
+  .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+  .stat-card { background: #1a1a2e; border-radius: 10px; padding: 14px 16px; text-align: center; }
+  .stat-value { font-size: 22px; font-weight: 800; color: #e94560; }
+  .stat-value.pembelian { color: #4ade80; }
+  .stat-value.pengeluaran { color: #60a5fa; }
+  .stat-label { font-size: 11px; color: #888; margin-top: 4px; letter-spacing: 1px; }
+
+  .filter-bar { padding: 14px 24px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; background: #1a1a2e; border-bottom: 1px solid #222; }
+  .filter-bar input, .filter-bar select { background: #16213e; border: 1px solid #333; color: #eee; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
+  .filter-bar input { flex: 1; min-width: 180px; }
+  .count-label { font-size: 12px; color: #888; margin-left: auto; }
+
+  .faktur-list { padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .faktur-card { background: #16213e; border-radius: 12px; padding: 16px 20px; border: 1px solid #222; cursor: pointer; transition: border-color 0.2s, transform 0.2s; }
+  .faktur-card:hover { border-color: #e94560; transform: translateY(-1px); }
+  .faktur-card.pembelian { border-left: 4px solid #4ade80; }
+  .faktur-card.pengeluaran { border-left: 4px solid #60a5fa; }
+
+  .faktur-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .faktur-no { font-size: 15px; font-weight: 800; letter-spacing: 1px; color: #fff; }
+  .faktur-type { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; }
+  .type-pembelian { background: #0a2e1a; color: #4ade80; }
+  .type-pengeluaran { background: #0a1e2e; color: #60a5fa; }
+
+  .faktur-body { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 12px; color: #888; }
+  .faktur-body span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .faktur-body .label { color: #555; font-size: 10px; letter-spacing: 1px; display: block; margin-bottom: 2px; }
+  .faktur-body .value { color: #ccc; font-weight: 500; }
+
+  .faktur-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
+  .faktur-user { font-size: 11px; color: #555; }
+  .faktur-items-count { font-size: 11px; color: #888; background: #1a1a2e; padding: 3px 10px; border-radius: 10px; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: #555; font-size: 16px; }
+  .loading { text-align: center; padding: 60px 20px; color: #888; }
+
+  .items-detail { display: none; margin-top: 12px; padding: 12px; background: #1a1a2e; border-radius: 8px; }
+  .items-detail.show { display: block; }
+  .items-detail table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .items-detail th { background: #22223a; color: #888; font-size: 10px; letter-spacing: 1px; padding: 6px 10px; text-align: left; }
+  .items-detail td { padding: 6px 10px; font-size: 12px; color: #ccc; border-bottom: 1px solid #222; }
+
+  @media (max-width: 600px) {
+    .faktur-body { grid-template-columns: 1fr; }
+    .filter-bar { flex-direction: column; }
+    .count-label { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="history.back()">← Kembali</button>
+  <div>
+    <div class="header-title">📋 Faktur Viewer</div>
+    <div class="header-sub">Stock Gudang Utama — read only, tidak bisa edit</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('all')" id="tabAll">Semua <span class="badge" id="countAll">—</span></button>
+  <button class="tab" onclick="switchTab('pembelian')" id="tabPembelian">🛒 Pembelian <span class="badge" id="countPembelian">—</span></button>
+  <button class="tab" onclick="switchTab('pengeluaran')" id="tabPengeluaran">🚚 Pengeluaran <span class="badge" id="countPengeluaran">—</span></button>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-card"><div class="stat-value" id="statTotal">—</div><div class="stat-label">TOTAL FAKTUR</div></div>
+  <div class="stat-card"><div class="stat-value pembelian" id="statPembelian">—</div><div class="stat-label">PEMBELIAN</div></div>
+  <div class="stat-card"><div class="stat-value pengeluaran" id="statPengeluaran">—</div><div class="stat-label">PENGELUARAN</div></div>
+</div>
+
+<div class="filter-bar">
+  <input type="text" id="searchInput" placeholder="🔍 Cari no faktur, supplier/customer..." oninput="filterData()">
+  <input type="date" id="filterDateFrom" onchange="filterData()" style="max-width:150px">
+  <span style="color:#555;font-size:12px">s/d</span>
+  <input type="date" id="filterDateTo" onchange="filterData()" style="max-width:150px">
+  <span class="count-label" id="countLabel">— faktur</span>
+</div>
+
+<div class="faktur-list" id="fakturList">
+  <div class="loading">Memuat data...</div>
+</div>
+
+<script>
+const API_BASE = 'http://127.0.0.1:8789';
+
+let allFaktur = [];
+let currentTab = 'all';
+let expandedId = null;
+
+function formatDate(d) {
+  if (!d) return '-';
+  return d.split(' ')[0].split('-').reverse().join('/');
+}
+
+function formatCurrency(n) {
+  if (!n && n !== 0) return '-';
+  return 'Rp ' + Number(n).toLocaleString('id-ID');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+  filterData();
+}
+
+function getItems(fakturId, type) {
+  const url = type === 'PEMBELIAN'
+    ? API_BASE + '/api/pembelian/' + fakturId
+    : API_BASE + '/api/pengeluaran/' + fakturId;
+  fetch(url).then(r => r.json()).then(data => {
+    const detail = document.getElementById('items-detail-' + fakturId);
+    if (detail && data.items) {
+      detail.innerHTML = '<table><thead><tr><th>#</th><th>ITEM</th><th>QTY</th><th>SATUAN</th><th>HARGA</th><th>SUBTOTAL</th></tr></thead><tbody>' +
+        data.items.map((it, i) => `<tr><td>${i+1}</td><td>${it.nama || '-'}</td><td>${it.qty}</td><td>${it.satuan || '-'}</td><td>${formatCurrency(it.harga)}</td><td>${formatCurrency(it.subtotal)}</td></tr>`).join('') +
+        '</tbody></table>';
+    }
+  }).catch(() => {});
+}
+
+function toggleDetail(fakturId, type) {
+  const el = document.getElementById('items-detail-' + fakturId);
+  if (!el) return;
+  if (expandedId === fakturId) {
+    el.classList.remove('show');
+    expandedId = null;
+  } else {
+    document.querySelectorAll('.items-detail').forEach(e => e.classList.remove('show'));
+    el.classList.add('show');
+    expandedId = fakturId;
+    getItems(fakturId, type);
+  }
+}
+
+function filterData() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const dateFrom = document.getElementById('filterDateFrom').value;
+  const dateTo = document.getElementById('filterDateTo').value;
+
+  let filtered = allFaktur.filter(f => {
+    if (currentTab !== 'all' && f.type !== currentTab.toUpperCase()) return false;
+    if (search) {
+      const searchable = ((f.no_faktur || '') + ' ' + (f.supplier || '') + ' ' + (f.customer || '') + ' ' + (f.keterangan || '')).toLowerCase();
+      if (!searchable.includes(search)) return false;
+    }
+    if (dateFrom && f.tanggal < dateFrom) return false;
+    if (dateTo && f.tanggal > dateTo) return false;
+    return true;
+  });
+
+  document.getElementById('countLabel').textContent = filtered.length + ' faktur';
+  render(filtered);
+}
+
+function render(fakturs) {
+  const list = document.getElementById('fakturList');
+  if (!fakturs.length) {
+    list.innerHTML = '<div class="empty-state">Tidak ada faktur matching filter</div>';
+    return;
+  }
+
+  list.innerHTML = fakturs.map(f => {
+    const typeClass = f.type === 'PEMBELIAN' ? 'pembelian' : 'pengeluaran';
+    const typeLabel = f.type === 'PEMBELIAN' ? 'PEMBELIAN' : 'PENGELUARAN';
+    const party = f.type === 'PEMBELIAN' ? f.supplier : f.customer;
+    return `
+    <div class="faktur-card ${typeClass}" onclick="toggleDetail(${f.id}, '${f.type}')">
+      <div class="faktur-header">
+        <span class="faktur-no">${f.no_faktur || '-'}</span>
+        <span class="faktur-type type-${typeClass.toLowerCase()}">${typeLabel}</span>
+      </div>
+      <div class="faktur-body">
+        <div>
+          <span class="label">TANGGAL</span>
+          <span class="value">${formatDate(f.tanggal)}</span>
+        </div>
+        <div>
+          <span class="label">${f.type === 'PEMBELIAN' ? 'SUPPLIER' : 'CUSTOMER'}</span>
+          <span class="value">${party || '-'}</span>
+        </div>
+        <div>
+          <span class="label">KETERANGAN</span>
+          <span class="value">${f.keterangan || '-'}</span>
+        </div>
+      </div>
+      <div class="faktur-footer">
+        <span class="faktur-user">📝 ${f.user || '-'}</span>
+        <span class="faktur-items-count">Klik untuk lihat items</span>
+      </div>
+      <div class="items-detail" id="items-detail-${f.id}"></div>
+    </div>
+  `;
+  }).join('');
+}
+
+function updateStats(data) {
+  document.getElementById('statTotal').textContent = data.length;
+  const p = data.filter(f => f.type === 'PEMBELIAN');
+  const g = data.filter(f => f.type === 'PENGELUARAN');
+  document.getElementById('statPembelian').textContent = p.length;
+  document.getElementById('statPengeluaran').textContent = g.length;
+  document.getElementById('countAll').textContent = data.length;
+  document.getElementById('countPembelian').textContent = p.length;
+  document.getElementById('countPengeluaran').textContent = g.length;
+}
+
+function init() {
+  Promise.all([
+    fetch(API_BASE + '/api/pembelian').then(r => r.json()),
+    fetch(API_BASE + '/api/pengeluaran').then(r => r.json())
+  ]).then(([pembelian, pengeluaran]) => {
+    const combined = [
+      ...pembelian.map(p => ({ ...p, type: 'PEMBELIAN' })),
+      ...pengeluaran.map(g => ({ ...g, type: 'PENGELUARAN' }))
+    ];
+    combined.sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+    allFaktur = combined;
+    updateStats(combined);
+    document.getElementById('countLabel').textContent = combined.length + ' faktur';
+    render(combined);
+  }).catch(err => {
+    document.getElementById('fakturList').innerHTML =
+      '<div class="empty-state">Gagal memuat data. Pastikan server berjalan di port 8789.</div>';
+  });
+}
+
+init();
+</script>
+</body>
+</html>
