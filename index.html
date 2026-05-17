@@ -2864,6 +2864,17 @@ function removeTfItem(idx) { window.tfItems.splice(idx, 1); renderTfItems(); }
 
 function closeTransaksiForm() { document.getElementById('transaksiFormModal').classList.remove('show'); }
 
+function printFakturFromDialog() {
+  var fc = document.getElementById('fakturPrintContent');
+  if (!fc) { showToast('Faktur tidak ditemukan', 'error'); return; }
+  var pw = window.open('', '', 'width=600,height=700');
+  pw.document.write('<!DOCTYPE html><html><head><title>Faktur</title><meta charset="UTF-8">' +
+    '<style>body{font-family:Arial;margin:0;padding:20px;background:#fff}#fakturPrintContent{font-family:Arial,sans-serif;font-size:11px;color:#000}table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:4px 6px;border:1px solid #888}th{background:#333;color:#fff;text-align:center}tr{background:#fff}*{color:#000!important}</style>' +
+    '</head><body>' + fc.innerHTML + '</body></html>');
+  pw.document.close();
+  setTimeout(function(){ pw.print(); pw.close(); }, 250);
+}
+
 function showFakturPrintDialog(data) {
   console.log('showFakturPrintDialog called with:', JSON.stringify(data));
   var isBeli = data.type === 'PEMBELIAN';
@@ -2917,7 +2928,7 @@ function showFakturPrintDialog(data) {
     '<div style="font-size:14px;font-weight:800;margin-bottom:16px;text-align:center;letter-spacing:2px">PRINT FAKTUR</div>' +
     '<div style="margin-bottom:16px;max-height:400px;overflow-y:auto;border:1px solid #ddd;padding:16px;background:#fafafa">' + fakturHtml + '</div>' +
     '<div style="display:flex;justify-content:flex-end;gap:10px">' +
-      '<button onclick="var pw=window.open(\'\',\'\',\'width=600,height=700\');pw.document.write(\'<html><head><title>Print Faktur</title><style>body{font-family:Arial;margin:0;padding:20px}*{color:#000!important}table{width:100%%;border-collapse:collapse;font-size:11px}th,td{padding:4px 6px;border:1px solid #888}th{background:#333;color:#fff;text-align:center}tr{background:#fff}</style></head><body>\'+document.getElementById(\'fakturPrintContent\').innerHTML+\'</body></html>\');pw.document.close();pw.focus();pw.print();pw.close()" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
+      '<button onclick="printFakturFromDialog()" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
       '<button onclick="document.getElementById(\'printOverlay\').remove()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">TIDAK</button>' +
     '</div>' +
   '</div>';
@@ -2981,7 +2992,7 @@ async function reprintFaktur(id, type) {
       '<div style="font-size:14px;font-weight:800;margin-bottom:16px;text-align:center;letter-spacing:2px">RE-PRINT FAKTUR</div>' +
       '<div style="margin-bottom:16px;max-height:400px;overflow-y:auto;border:1px solid #ddd;padding:16px;background:#fafafa">' + fakturHtml + '</div>' +
       '<div style="display:flex;justify-content:flex-end;gap:10px">' +
-        '<button onclick="var pw=window.open(\'\',\'\',\'width=600,height=700\');pw.document.write(\'<html><head><title>Print Faktur</title><style>body{font-family:Arial;margin:0;padding:20px}*{color:#000!important}table{width:100%%;border-collapse:collapse;font-size:11px}th,td{padding:4px 6px;border:1px solid #888}th{background:#333;color:#fff;text-align:center}tr{background:#fff}</style></head><body>\'+document.getElementById(\'fakturPrintContent\').innerHTML+\'</body></html>\');pw.document.close();pw.focus();pw.print();pw.close()" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
+        '<button onclick="printFakturFromDialog()" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
         '<button onclick="document.getElementById(\'printOverlay\').remove()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">TUTUP</button>' +
       '</div>' +
     '</div>';
