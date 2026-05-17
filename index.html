@@ -3022,6 +3022,8 @@ async function submitTransaksi() {
     };
     closeTransaksiForm();
     showFakturPrintDialog(savedData);
+    console.log('DEBUG savedData:', JSON.stringify(savedData));
+    console.log('DEBUG tfItems:', JSON.stringify(window.tfItems));
     var r = await fetch(API_BASE + '/items'); items = await r.json();
     renderCards(); updateStats();
     if (document.getElementById('pageTransaksi').classList.contains('active')) loadReport();
