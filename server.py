@@ -326,15 +326,17 @@ def add_pembelian():
             no_faktur = no_faktur.upper()
 
         cur = conn.execute("""
-            INSERT INTO pembelian (no_faktur, tanggal, supplier, total, keterangan, user, created)
-            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            INSERT INTO pembelian (no_faktur, tanggal, supplier, total, keterangan, user, no_polisi, supir, created)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         """, (
             no_faktur,
             tanggal,
             data.get('supplier', '').upper(),
             data.get('total', 0),
             data.get('keterangan', '').upper(),
-            data.get('user', 'ADMIN')
+            data.get('user', 'ADMIN'),
+            data.get('no_polisi', ''),
+            data.get('supir', '')
         ))
         pembelian_id = cur.lastrowid
 
@@ -445,15 +447,17 @@ def add_pengeluaran():
             no_faktur = no_faktur.upper()
 
         cur = conn.execute("""
-            INSERT INTO pengeluaran (no_faktur, tanggal, customer, total, keterangan, user, created)
-            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            INSERT INTO pengeluaran (no_faktur, tanggal, customer, total, keterangan, user, no_polisi, supir, created)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         """, (
             no_faktur,
             tanggal,
             data.get('customer', '').upper(),
             data.get('total', 0),
             data.get('keterangan', '').upper(),
-            data.get('user', 'ADMIN')
+            data.get('user', 'ADMIN'),
+            data.get('no_polisi', ''),
+            data.get('supir', '')
         ))
         pengeluaran_id = cur.lastrowid
 
