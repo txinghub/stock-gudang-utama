@@ -2582,7 +2582,7 @@ async function loadReport() {
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Memuat laporan...</div>';
   try {
-    const res = await fetch(API_BASE + '/transaksi');
+    const res = await fetch(API_BASE + '/api/transaksi');
     const allData = await res.json();
     const filtered = transaksiFilter === 'all' ? allData : allData.filter(t => t.type === transaksiFilter);
     renderA4Report(el, filtered, allData);
