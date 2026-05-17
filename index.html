@@ -2814,6 +2814,13 @@ async function openTransaksiForm(type) {
   document.getElementById('tfTotal').textContent = 'Rp 0';
   document.getElementById('transaksiFormCloseBtn').onclick = function(){ m.classList.remove('show'); };
   m.classList.add('show');
+  // Auto-fill harga when item is selected
+  sel.onchange = function() {
+    var opt = sel.options[sel.selectedIndex];
+    if (opt && opt.value) {
+      document.getElementById('tfHarga').value = parseInt(opt.dataset.harga) || 0;
+    }
+  };
   } catch(e) { console.error('openTransaksiForm error:', e); }
 }
 
