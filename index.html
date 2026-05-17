@@ -644,8 +644,8 @@ body {
 </style>
 <style>
 @media print {
-  body * { visibility: hidden; }
-  #fakturPrintContent, #fakturPrintContent * { visibility: visible; }
+  body * { display: none !important; }
+  #fakturPrintContent, #fakturPrintContent * { display: block !important; }
   #fakturPrintContent {
     position: absolute; left: 0; top: 0;
     width: 190mm;
@@ -2917,7 +2917,7 @@ function showFakturPrintDialog(data) {
     '<div style="font-size:14px;font-weight:800;margin-bottom:16px;text-align:center;letter-spacing:2px">PRINT FAKTUR</div>' +
     '<div style="margin-bottom:16px;max-height:400px;overflow-y:auto;border:1px solid #ddd;padding:16px;background:#fafafa">' + fakturHtml + '</div>' +
     '<div style="display:flex;justify-content:flex-end;gap:10px">' +
-      '<button onclick="document.getElementById(\'printOverlay\').remove();window.print()" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
+      '<button onclick="window.print();this.disabled=true" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
       '<button onclick="document.getElementById(\'printOverlay\').remove()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">TIDAK</button>' +
     '</div>' +
   '</div>';
@@ -2981,7 +2981,7 @@ async function reprintFaktur(id, type) {
       '<div style="font-size:14px;font-weight:800;margin-bottom:16px;text-align:center;letter-spacing:2px">RE-PRINT FAKTUR</div>' +
       '<div style="margin-bottom:16px;max-height:400px;overflow-y:auto;border:1px solid #ddd;padding:16px;background:#fafafa">' + fakturHtml + '</div>' +
       '<div style="display:flex;justify-content:flex-end;gap:10px">' +
-        '<button onclick="document.getElementById(\'printOverlay\').remove();window.print()" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
+        '<button onclick="window.print();this.disabled=true" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
         '<button onclick="document.getElementById(\'printOverlay\').remove()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">TUTUP</button>' +
       '</div>' +
     '</div>';
