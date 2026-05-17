@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Items Data Viewer — Stock Gudang Utama</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #0f3460, #16213e); padding: 20px 24px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid #0f3460; }
+  .back-btn { background: #e94560; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+  .back-btn:hover { background: #c73e54; }
+  .header-title { font-size: 20px; font-weight: 700; color: #fff; }
+  .header-sub { font-size: 12px; color: #888; }
+
+  .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+  .stat-card { background: #1a1a2e; border-radius: 10px; padding: 14px 16px; text-align: center; }
+  .stat-value { font-size: 24px; font-weight: 800; color: #e94560; }
+  .stat-label { font-size: 11px; color: #888; margin-top: 4px; letter-spacing: 1px; }
+
+  .filter-bar { padding: 14px 24px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; background: #16213e; border-bottom: 1px solid #0f3460; }
+  .filter-bar input, .filter-bar select { background: #1a1a2e; border: 1px solid #333; color: #eee; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
+  .filter-bar input { flex: 1; min-width: 180px; }
+  .filter-bar select { min-width: 140px; }
+  .count-label { font-size: 12px; color: #888; margin-left: auto; }
+
+  .items-table-wrap { padding: 16px 24px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  th { background: #0f3460; color: #e94560; padding: 10px 12px; text-align: left; font-size: 11px; letter-spacing: 1px; font-weight: 700; position: sticky; top: 0; }
+  td { padding: 10px 12px; border-bottom: 1px solid #222; font-size: 13px; vertical-align: top; }
+  tr:hover td { background: #1f1f3a; }
+  .nama-cell { font-weight: 600; color: #fff; }
+  .stok-ok { color: #4ade80; font-weight: 700; }
+  .stok-low { color: #e94560; font-weight: 700; }
+  .stok-empty { color: #555; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge-butter { background: #2d1b00; color: #f59e0b; }
+  .badge-choco { background: #1a0a00; color: #a16207; }
+  .badge-cita { background: #1a0a2e; color: #a855f7; }
+  .badge-default { background: #1a1a2e; color: #888; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: #555; font-size: 16px; }
+  .loading { text-align: center; padding: 60px 20px; color: #888; }
+
+  @media (max-width: 600px) {
+    .filter-bar { flex-direction: column; }
+    .count-label { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="history.back()">← Kembali</button>
+  <div>
+    <div class="header-title">📦 Items Data Viewer</div>
+    <div class="header-sub">Stock Gudang Utama — read only, tidak bisa edit</div>
+  </div>
+</div>
+
+<div class="stats-bar" id="statsBar">
+  <div class="stat-card"><div class="stat-value" id="statTotal">—</div><div class="stat-label">TOTAL ITEMS</div></div>
+  <div class="stat-card"><div class="stat-value" id="statLow">—</div><div class="stat-label">LOW STOCK</div></div>
+  <div class="stat-card"><div class="stat-value" id="statEmpty">—</div><div class="stat-label">STOK 0</div></div>
+  <div class="stat-card"><div class="stat-value" id="statSuppliers">—</div><div class="stat-label">SUPPLIERS</div></div>
+</div>
+
+<div class="filter-bar">
+  <input type="text" id="searchInput" placeholder="🔍 Cari nama item..." oninput="filterItems()">
+  <select id="filterLokasi" onchange="filterItems()">
+    <option value="">Semua Lokasi</option>
+  </select>
+  <select id="filterKategori" onchange="filterItems()">
+    <option value="">Semua Kategori</option>
+  </select>
+  <select id="filterStok" onchange="filterItems()">
+    <option value="">Semua Stok</option>
+    <option value="low">Rendah / 0</option>
+    <option value="ok">Normal</option>
+  </select>
+  <span class="count-label" id="countLabel">— items</span>
+</div>
+
+<div class="items-table-wrap">
+  <table id="itemsTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>NAMA ITEM</th>
+        <th>LOKASI</th>
+        <th>KATEGORI</th>
+        <th>SATUAN</th>
+        <th>STOK</th>
+        <th>MIN</th>
+        <th>SUPPLIER</th>
+      </tr>
+    </thead>
+    <tbody id="itemsBody">
+      <tr><td colspan="8" class="loading">Memuat data...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const API_BASE = 'http://127.0.0.1:8789';
+
+let allItems = [];
+
+function getBadge(kategori) {
+  const k = (kategori || '').toUpperCase();
+  if (k.includes('BUTTER')) return 'badge-butter';
+  if (k.includes('CHOCO') || k.includes('COKLAT')) return 'badge-choco';
+  if (k.includes('CITA')) return 'badge-cita';
+  return 'badge-default';
+}
+
+function stokClass(stok, min) {
+  if (stok === 0) return 'stok-empty';
+  if (stok <= min) return 'stok-low';
+  return 'stok-ok';
+}
+
+function render(items) {
+  const tbody = document.getElementById('itemsBody');
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Tidak ada item matching filter</td></tr>';
+    return;
+  }
+  tbody.innerHTML = items.map((item, i) => `
+    <tr>
+      <td style="color:#555;font-size:11px">${i + 1}</td>
+      <td class="nama-cell">${item.nama || '-'}</td>
+      <td style="color:#888;font-size:12px">${item.lokasi || '-'}</td>
+      <td><span class="badge ${getBadge(item.kategori)}">${item.kategori || '-'}</span></td>
+      <td style="color:#888;font-size:12px">${item.satuan || '-'}</td>
+      <td class="${stokClass(item.stok, item.min_stok)}">${item.stok}</td>
+      <td style="color:#555;font-size:12px">${item.min_stok}</td>
+      <td style="color:#666;font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.supplier || '-'}</td>
+    </tr>
+  `).join('');
+}
+
+function updateStats(items) {
+  document.getElementById('statTotal').textContent = items.length;
+  document.getElementById('statLow').textContent = items.filter(i => i.stok <= i.min_stok && i.stok > 0).length;
+  document.getElementById('statEmpty').textContent = items.filter(i => i.stok === 0).length;
+}
+
+function populateFilters(items) {
+  const lokasis = [...new Set(items.map(i => i.lokasi).filter(Boolean))].sort();
+  const kategoris = [...new Set(items.map(i => i.kategori).filter(Boolean))].sort();
+
+  document.getElementById('filterLokasi').innerHTML = '<option value="">Semua Lokasi</option>' +
+    lokasis.map(l => `<option value="${l}">${l}</option>`).join('');
+
+  document.getElementById('filterKategori').innerHTML = '<option value="">Semua Kategori</option>' +
+    kategoris.map(k => `<option value="${k}">${k}</option>`).join('');
+}
+
+function filterItems() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const lokasi = document.getElementById('filterLokasi').value;
+  const kategori = document.getElementById('filterKategori').value;
+  const stokFilter = document.getElementById('filterStok').value;
+
+  let filtered = allItems.filter(item => {
+    if (search && !(item.nama || '').toLowerCase().includes(search)) return false;
+    if (lokasi && item.lokasi !== lokasi) return false;
+    if (kategori && item.kategori !== kategori) return false;
+    if (stokFilter === 'low' && !(item.stok <= item.min_stok)) return false;
+    if (stokFilter === 'ok' && !(item.stok > item.min_stok)) return false;
+    return true;
+  });
+
+  document.getElementById('countLabel').textContent = filtered.length + ' items';
+  render(filtered);
+}
+
+function init() {
+  fetch(API_BASE + '/api/items').then(r => r.json()).then(data => {
+    allItems = data;
+    updateStats(data);
+    populateFilters(data);
+    document.getElementById('countLabel').textContent = data.length + ' items';
+    render(data);
+
+    // Supplier count
+    const suppliers = [...new Set(data.map(i => i.supplier).filter(Boolean))];
+    document.getElementById('statSuppliers').textContent = suppliers.length;
+  }).catch(err => {
+    document.getElementById('itemsBody').innerHTML =
+      '<tr><td colspan="8" class="empty-state">Gagal memuat data. Pastikan server berjalan di port 8789.</td></tr>';
+  });
+}
+
+init();
+</script>
+</body>
+</html>
