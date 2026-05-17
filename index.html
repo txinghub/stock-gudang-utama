@@ -870,12 +870,16 @@ body {
   </div>
 
   <!-- ===== TRANSAKSI PAGE ===== -->
-  <div id="pageTransaksi" class="main page-transaksi" style="display:none">
-    <div class="page-header" style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+<div id="pageTransaksi" class="main page-transaksi" style="display:none">
+    <div class="page-header" style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <div class="page-title" style="font-size:13px">📋 TRANSAKSI</div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-ghost" onclick="openTransaksiForm('PEMBELIAN')" style="font-size:11px;padding:6px 14px">🛒 PEMBELIAN</button>
-        <button class="btn btn-ghost" onclick="openTransaksiForm('PENGIRIMAN')" style="font-size:11px;padding:6px 14px">🚚 PENGIRIMAN</button>
+        <button class="btn btn-ghost" onclick="openTransaksiForm('PENGIRIMAN')" style="font-size:11px;padding:6px 14px">🚚 PENGELUARAN</button>
+        <div style="width:1px;background:var(--border);margin:2px 4px"></div>
+        <button class="btn btn-ghost" onclick="openReport('masuk')" style="font-size:11px;padding:6px 14px;background:var(--success-dim)">📥 MASUK</button>
+        <button class="btn btn-ghost" onclick="openReport('keluar')" style="font-size:11px;padding:6px 14px;background:var(--danger-dim)">📤 KELUAR</button>
+        <button class="btn btn-ghost" onclick="openReport('gabungan')" style="font-size:11px;padding:6px 14px;background:var(--info-dim)">📋 GABUNGAN</button>
       </div>
     </div>
 
