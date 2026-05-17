@@ -2865,10 +2865,13 @@ function removeTfItem(idx) { window.tfItems.splice(idx, 1); renderTfItems(); }
 function closeTransaksiForm() { document.getElementById('transaksiFormModal').classList.remove('show'); }
 
 function showFakturPrintDialog(data) {
+  console.log('showFakturPrintDialog called with:', JSON.stringify(data));
   var isBeli = data.type === 'PEMBELIAN';
   var partyName = isBeli ? (data.supplier || '-') : (data.customer || '-');
   var partyLabel = isBeli ? 'SUPPLIER' : 'MUTASI';
-  var itemsRows = data.items.map(function(it, i) {
+  var itemsArr = data.items || [];
+  console.log('itemsArr:', JSON.stringify(itemsArr));
+  var itemsRows = itemsArr.map(function(it, i) {
     var harga = it.harga || 0;
     var qty = it.qty || 0;
     var sub = it.subtotal || (harga * qty);
