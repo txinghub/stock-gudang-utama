@@ -2877,8 +2877,8 @@ function showFakturPrintDialog(data) {
       '<td style="padding:4px 6px;border:1px solid #ddd;font-size:10px;font-weight:700">' + (it.nama || '-') + '</td>' +
       '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + qty + '</td>' +
       '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + (it.satuan || '-') + '</td>' +
-      '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px">Rp ' + harga.toLocaleString('id') + '</td>' +
-      '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px;font-weight:700">Rp ' + sub.toLocaleString('id') + '</td>' +
+      '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px">' + (harga ? 'Rp ' + harga.toLocaleString('id') : '-') + '</td>' +
+      '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px;font-weight:700">' + (sub ? 'Rp ' + sub.toLocaleString('id') : '-') + '</td>' +
     '</tr>';
   }).join('');
   var grandTotal = data.total || data.items.reduce(function(s,i){return s+(i.subtotal||(i.qty*i.harga));},0);
@@ -2941,8 +2941,8 @@ async function reprintFaktur(id, type) {
         '<td style="padding:4px 6px;border:1px solid #ddd;font-size:10px;font-weight:700">' + (it.nama || '-') + '</td>' +
         '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + qty + '</td>' +
         '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + (it.satuan || '-') + '</td>' +
-        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px">Rp ' + harga.toLocaleString('id') + '</td>' +
-        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px;font-weight:700">Rp ' + sub.toLocaleString('id') + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px">' + (harga ? 'Rp ' + harga.toLocaleString('id') : '-') + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px;font-weight:700">' + (sub ? 'Rp ' + sub.toLocaleString('id') : '-') + '</td>' +
       '</tr>';
     }).join('');
     var grandTotal = t.total || 0;
