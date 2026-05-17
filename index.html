@@ -2887,13 +2887,13 @@ function showFakturPrintDialog(data) {
   var grandTotal = data.total || data.items.reduce(function(s,i){return s+(i.subtotal||(i.qty*i.harga));},0);
   var fakturHtml = '<div id="fakturPrintContent" style="font-family:Arial,sans-serif;">' +
     '<div style="text-align:center;border-bottom:2px solid #333;padding-bottom:8px;margin-bottom:8px">' +
-      '<div style="font-size:16px;font-weight:bold;letter-spacing:2px">FAKTUR PEMBELIAN</div>' +
-      '<div style="font-size:20px;font-weight:bold;letter-spacing:3px;margin-top:4px">' + (data.no_faktur||'-') + '</div>' +
+      '<div style="font-size:16px;font-weight:bold;letter-spacing:2px;color:#000">FAKTUR PEMBELIAN</div>' +
+      '<div style="font-size:20px;font-weight:bold;letter-spacing:3px;margin-top:4px;color:#000">' + (data.no_faktur||'-') + '</div>' +
     '</div>' +
     '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px">' +
-      '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">TANGGAL</div><div style="font-weight:700">' + (data.tanggal||'-') + '</div></div>' +
-      '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">' + partyLabel + '</div><div style="font-weight:700">' + partyName + '</div></div>' +
-      '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">PETUGAS</div><div style="font-weight:700">' + (data.user||'-') + '</div></div>' +
+      '<div><div style="color:#555;font-size:9px;letter-spacing:1px;margin-bottom:2px">TANGGAL</div><div style="font-weight:700;color:#000">' + (data.tanggal||'-') + '</div></div>' +
+      '<div><div style="color:#555;font-size:9px;letter-spacing:1px;margin-bottom:2px">' + partyLabel + '</div><div style="font-weight:700;color:#000">' + partyName + '</div></div>' +
+      '<div><div style="color:#555;font-size:9px;letter-spacing:1px;margin-bottom:2px">PETUGAS</div><div style="font-weight:700;color:#000">' + (data.user||'-') + '</div></div>' +
     '</div>' +
     '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6px">' +
       '<thead><tr style="background:#333;color:#fff">' +
@@ -2906,10 +2906,10 @@ function showFakturPrintDialog(data) {
       '</tr></thead><tbody>' + itemsRows + '</tbody>' +
     '</table>' +
     '<div style="display:flex;justify-content:flex-end;padding:8px;background:#f5f5f5;border-radius:4px;margin-bottom:6px">' +
-      '<div style="font-size:10px;letter-spacing:1px;color:#888;margin-right:16px">GRAND TOTAL</div>' +
-      '<div style="font-size:16px;font-weight:bold;color:#333">Rp ' + grandTotal.toLocaleString('id') + '</div>' +
+      '<div style="font-size:10px;letter-spacing:1px;color:#555;margin-right:16px">GRAND TOTAL</div>' +
+      '<div style="font-size:16px;font-weight:bold;color:#000">Rp ' + grandTotal.toLocaleString('id') + '</div>' +
     '</div>' +
-    (data.keterangan ? '<div style="font-size:9px;color:#888;margin-bottom:6px">CATATAN: ' + data.keterangan + '</div>' : '') +
+    (data.keterangan ? '<div style="font-size:9px;color:#555;margin-bottom:6px">CATATAN: ' + data.keterangan + '</div>' : '') +
   '</div>';
   var overlay = document.createElement('div');
   overlay.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center';
@@ -2951,13 +2951,13 @@ async function reprintFaktur(id, type) {
     var grandTotal = t.total || 0;
     var fakturHtml = '<div id="fakturPrintContent" style="font-family:Arial,sans-serif;">' +
       '<div style="text-align:center;border-bottom:2px solid #333;padding-bottom:8px;margin-bottom:8px">' +
-        '<div style="font-size:16px;font-weight:bold;letter-spacing:2px">FAKTUR ' + (isBeli?'PEMBELIAN':'PENGELUARAN') + '</div>' +
-        '<div style="font-size:20px;font-weight:bold;letter-spacing:3px;margin-top:4px">' + (t.no_faktur||'-') + '</div>' +
+        '<div style="font-size:16px;font-weight:bold;letter-spacing:2px;color:#000">FAKTUR ' + (isBeli?'PEMBELIAN':'PENGELUARAN') + '</div>' +
+        '<div style="font-size:20px;font-weight:bold;letter-spacing:3px;margin-top:4px;color:#000">' + (t.no_faktur||'-') + '</div>' +
       '</div>' +
       '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px">' +
-        '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">TANGGAL</div><div style="font-weight:700">' + (t.tanggal||'-') + '</div></div>' +
-        '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">' + partyLabel + '</div><div style="font-weight:700">' + partyName + '</div></div>' +
-        '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">PETUGAS</div><div style="font-weight:700">' + (t.user||'-') + '</div></div>' +
+        '<div><div style="color:#555;font-size:9px;letter-spacing:1px;margin-bottom:2px">TANGGAL</div><div style="font-weight:700;color:#000">' + (t.tanggal||'-') + '</div></div>' +
+        '<div><div style="color:#555;font-size:9px;letter-spacing:1px;margin-bottom:2px">' + partyLabel + '</div><div style="font-weight:700;color:#000">' + partyName + '</div></div>' +
+        '<div><div style="color:#555;font-size:9px;letter-spacing:1px;margin-bottom:2px">PETUGAS</div><div style="font-weight:700;color:#000">' + (t.user||'-') + '</div></div>' +
       '</div>' +
       '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6px">' +
         '<thead><tr style="background:#333;color:#fff">' +
@@ -2970,10 +2970,10 @@ async function reprintFaktur(id, type) {
         '</tr></thead><tbody>' + itemsRows + '</tbody>' +
       '</table>' +
       '<div style="display:flex;justify-content:flex-end;padding:8px;background:#f5f5f5;border-radius:4px;margin-bottom:6px">' +
-        '<div style="font-size:10px;letter-spacing:1px;color:#888;margin-right:16px">GRAND TOTAL</div>' +
-        '<div style="font-size:16px;font-weight:bold;color:#333">Rp ' + grandTotal.toLocaleString('id') + '</div>' +
+        '<div style="font-size:10px;letter-spacing:1px;color:#555;margin-right:16px">GRAND TOTAL</div>' +
+        '<div style="font-size:16px;font-weight:bold;color:#000">Rp ' + grandTotal.toLocaleString('id') + '</div>' +
       '</div>' +
-      (t.keterangan ? '<div style="font-size:9px;color:#888;margin-bottom:6px">CATATAN: ' + t.keterangan + '</div>' : '') +
+      (t.keterangan ? '<div style="font-size:9px;color:#555;margin-bottom:6px">CATATAN: ' + t.keterangan + '</div>' : '') +
     '</div>';
     var overlay = document.createElement('div');
     overlay.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center';
