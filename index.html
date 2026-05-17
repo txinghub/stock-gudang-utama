@@ -2711,7 +2711,7 @@ function buildReportPage(header, subtitle, rows, allData) {
       const badge = isBeli ? 'PEMBELIAN' : 'PENGELUARAN';
       const badgeBg = isBeli ? '#e8f5e9' : '#ffebee';
       const badgeColor = isBeli ? '#2e7d32' : '#c62828';
-      html += `<tr style="background:${bg}">
+      html += `<tr style="background:${bg};cursor:pointer" onclick="reprintFaktur(${t.id},'${t.type}')" title="Klik untuk print/reprint">
         <td style="padding:5px 6px;border:1px solid #ddd;font-weight:bold;font-size:11px">${t.no_faktur || '-'}</td>
         <td style="padding:5px 6px;border:1px solid #ddd;text-align:center;font-size:11px">${fmtDate(t.tanggal)}</td>
         <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px">${t.supplier || t.customer || '-'}</td>
@@ -2914,6 +2914,71 @@ function showFakturPrintDialog(data) {
   overlay.id = 'printOverlay';
   overlay.onclick = function(e) { if(e.target===overlay) overlay.remove(); };
   document.body.appendChild(overlay);
+}
+
+async function reprintFaktur(id, type) {
+  try {
+    var endpoint = type === 'PEMBELIAN' ? '/pembelian/' + id : '/pengeluaran/' + id;
+    var res = await fetch(API_BASE + endpoint);
+    var t = await res.json();
+    if (!res.ok) { showToast('Gagal memuat faktur', 'error'); return; }
+    var isBeli = type === 'PEMBELIAN';
+    var partyName = isBeli ? (t.supplier || '-') : (t.customer || '-');
+    var partyLabel = isBeli ? 'SUPPLIER' : 'MUTASI';
+    var itemsRows = (t.items||[]).map(function(it, i) {
+      var harga = it.harga || 0;
+      var qty = it.qty || 0;
+      var sub = it.subtotal || (harga * qty);
+      return '<tr>' +
+        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + (i+1) + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #ddd;font-size:10px;font-weight:700">' + (it.nama || '-') + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + qty + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + (it.satuan || '-') + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px">Rp ' + harga.toLocaleString('id') + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px;font-weight:700">Rp ' + sub.toLocaleString('id') + '</td>' +
+      '</tr>';
+    }).join('');
+    var grandTotal = t.total || 0;
+    var fakturHtml = '<div id="fakturPrintContent" style="font-family:Arial,sans-serif;">' +
+      '<div style="text-align:center;border-bottom:2px solid #333;padding-bottom:8px;margin-bottom:8px">' +
+        '<div style="font-size:16px;font-weight:bold;letter-spacing:2px">FAKTUR ' + (isBeli?'PEMBELIAN':'PENGELUARAN') + '</div>' +
+        '<div style="font-size:20px;font-weight:bold;letter-spacing:3px;margin-top:4px">' + (t.no_faktur||'-') + '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px">' +
+        '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">TANGGAL</div><div style="font-weight:700">' + (t.tanggal||'-') + '</div></div>' +
+        '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">' + partyLabel + '</div><div style="font-weight:700">' + partyName + '</div></div>' +
+        '<div><div style="color:#888;font-size:9px;letter-spacing:1px;margin-bottom:2px">PETUGAS</div><div style="font-weight:700">' + (t.user||'-') + '</div></div>' +
+      '</div>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6px">' +
+        '<thead><tr style="background:#333;color:#fff">' +
+          '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:center">NO</th>' +
+          '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:left">NAMA ITEM</th>' +
+          '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:center">QTY</th>' +
+          '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:center">SATUAN</th>' +
+          '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:right">HARGA</th>' +
+          '<th style="padding:4px 6px;border:1px solid #222;font-size:9px;text-align:right">SUBTOTAL</th>' +
+        '</tr></thead><tbody>' + itemsRows + '</tbody>' +
+      '</table>' +
+      '<div style="display:flex;justify-content:flex-end;padding:8px;background:#f5f5f5;border-radius:4px;margin-bottom:6px">' +
+        '<div style="font-size:10px;letter-spacing:1px;color:#888;margin-right:16px">GRAND TOTAL</div>' +
+        '<div style="font-size:16px;font-weight:bold;color:#333">Rp ' + grandTotal.toLocaleString('id') + '</div>' +
+      '</div>' +
+      (t.keterangan ? '<div style="font-size:9px;color:#888;margin-bottom:6px">CATATAN: ' + t.keterangan + '</div>' : '') +
+    '</div>';
+    var overlay = document.createElement('div');
+    overlay.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;max-width:600px;width:90%;font-family:Arial,sans-serif">' +
+      '<div style="font-size:14px;font-weight:800;margin-bottom:16px;text-align:center;letter-spacing:2px">RE-PRINT FAKTUR</div>' +
+      '<div style="margin-bottom:16px;max-height:400px;overflow-y:auto;border:1px solid #ddd;padding:16px;background:#fafafa">' + fakturHtml + '</div>' +
+      '<div style="display:flex;justify-content:flex-end;gap:10px">' +
+        '<button onclick="document.getElementById(\'printOverlay\').remove();window.print()" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
+        '<button onclick="document.getElementById(\'printOverlay\').remove()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">TUTUP</button>' +
+      '</div>' +
+    '</div>';
+    overlay.id = 'printOverlay';
+    overlay.onclick = function(e) { if(e.target===overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+  } catch(e) { showToast('Gagal: '+e.message, 'error'); }
 }
 
 async function submitTransaksi() {
