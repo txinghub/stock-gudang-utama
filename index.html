@@ -2917,7 +2917,7 @@ function showFakturPrintDialog(data) {
     '<div style="font-size:14px;font-weight:800;margin-bottom:16px;text-align:center;letter-spacing:2px">PRINT FAKTUR</div>' +
     '<div style="margin-bottom:16px;max-height:400px;overflow-y:auto;border:1px solid #ddd;padding:16px;background:#fafafa">' + fakturHtml + '</div>' +
     '<div style="display:flex;justify-content:flex-end;gap:10px">' +
-      '<button onclick="window.print();this.disabled=true" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
+      '<button onclick="var pw=window.open(\'\',\'\',\'width=600,height=700\');pw.document.write(\'<html><head><title>Print Faktur</title><style>body{font-family:Arial;margin:0;padding:20px}*{color:#000!important}table{width:100%%;border-collapse:collapse;font-size:11px}th,td{padding:4px 6px;border:1px solid #888}th{background:#333;color:#fff;text-align:center}tr{background:#fff}</style></head><body>\'+document.getElementById(\'fakturPrintContent\').innerHTML+\'</body></html>\');pw.document.close();pw.focus();pw.print();pw.close()" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
       '<button onclick="document.getElementById(\'printOverlay\').remove()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">TIDAK</button>' +
     '</div>' +
   '</div>';
@@ -2939,13 +2939,13 @@ async function reprintFaktur(id, type) {
       var harga = it.harga || 0;
       var qty = it.qty || 0;
       var sub = it.subtotal || (harga * qty);
-      return '<tr>' +
-        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + (i+1) + '</td>' +
-        '<td style="padding:4px 6px;border:1px solid #ddd;font-size:10px;font-weight:700">' + (it.nama || '-') + '</td>' +
-        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + qty + '</td>' +
-        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:center;font-size:10px">' + (it.satuan || '-') + '</td>' +
-        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px">' + (harga ? 'Rp ' + harga.toLocaleString('id') : '-') + '</td>' +
-        '<td style="padding:4px 6px;border:1px solid #ddd;text-align:right;font-size:10px;font-weight:700">' + (sub ? 'Rp ' + sub.toLocaleString('id') : '-') + '</td>' +
+      return '<tr style="background:#fff">' +
+        '<td style="padding:4px 6px;border:1px solid #888;text-align:center;font-size:10px;color:#000">' + (i+1) + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #888;font-size:10px;font-weight:700;color:#000">' + (it.nama || '-') + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #888;text-align:center;font-size:10px;color:#000">' + qty + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #888;text-align:center;font-size:10px;color:#000">' + (it.satuan || '-') + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #888;text-align:right;font-size:10px;color:#000">' + (harga ? 'Rp ' + harga.toLocaleString('id') : '-') + '</td>' +
+        '<td style="padding:4px 6px;border:1px solid #888;text-align:right;font-size:10px;font-weight:700;color:#000">' + (sub ? 'Rp ' + sub.toLocaleString('id') : '-') + '</td>' +
       '</tr>';
     }).join('');
     var grandTotal = t.total || 0;
@@ -2981,7 +2981,7 @@ async function reprintFaktur(id, type) {
       '<div style="font-size:14px;font-weight:800;margin-bottom:16px;text-align:center;letter-spacing:2px">RE-PRINT FAKTUR</div>' +
       '<div style="margin-bottom:16px;max-height:400px;overflow-y:auto;border:1px solid #ddd;padding:16px;background:#fafafa">' + fakturHtml + '</div>' +
       '<div style="display:flex;justify-content:flex-end;gap:10px">' +
-        '<button onclick="window.print();this.disabled=true" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
+        '<button onclick="var pw=window.open(\'\',\'\',\'width=600,height=700\');pw.document.write(\'<html><head><title>Print Faktur</title><style>body{font-family:Arial;margin:0;padding:20px}*{color:#000!important}table{width:100%%;border-collapse:collapse;font-size:11px}th,td{padding:4px 6px;border:1px solid #888}th{background:#333;color:#fff;text-align:center}tr{background:#fff}</style></head><body>\'+document.getElementById(\'fakturPrintContent\').innerHTML+\'</body></html>\');pw.document.close();pw.focus();pw.print();pw.close()" style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PRINT / PDF</button>' +
         '<button onclick="document.getElementById(\'printOverlay\').remove()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">TUTUP</button>' +
       '</div>' +
     '</div>';
