@@ -42,6 +42,10 @@ def after_request(response):
 def index():
     return send_file('index.html')
 
+@app.route('/kartu-stok-viewer.html')
+def kartu_stok_viewer():
+    return send_file('kartu-stok-viewer.html')
+
 # ==================== ITEMS API ====================
 
 @app.route('/api/items', methods=['GET'])

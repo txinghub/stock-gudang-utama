@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kartu Stock - Stock Gudang Utama</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0f1419;
+            color: #e7e9ea;
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #1a6b3a 0%, #14522d 100%);
+            border-bottom: 1px solid #2c3e50;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 40px; height: 40px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .header-title h1 { font-size: 18px; font-weight: 700; color: #fff; }
+        .header-title p { font-size: 11px; color: #a8d4b8; }
+        .btn-home {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        .btn-home:hover { background: rgba(255,255,255,0.2); }
+
+        /* MAIN CONTENT */
+        .main-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* FILTER BAR */
+        .filter-bar {
+            background: #1c2128;
+            border: 1px solid #2c3e50;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .filter-label { font-size: 11px; color: #7d8590; text-transform: uppercase; letter-spacing: 0.5px; }
+        .filter-select, .filter-input {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e7e9ea;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 180px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .filter-select:focus, .filter-input:focus { border-color: #27ae60; }
+        .btn-cetak {
+            background: linear-gradient(135deg, #27ae60, #1e8449);
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: auto;
+            transition: opacity 0.2s;
+        }
+        .btn-cetak:hover { opacity: 0.85; }
+
+        /* SUMMARY CARDS */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .summary-card {
+            background: #1c2128;
+            border: 1px solid #2c3e50;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+        .summary-card.awal { border-left: 3px solid #f39c12; }
+        .summary-card.masuk { border-left: 3px solid #27ae60; }
+        .summary-card.keluar { border-left: 3px solid #e74c3c; }
+        .summary-card.akhir { border-left: 3px solid #3498db; }
+        .summary-label { font-size: 11px; color: #7d8590; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px; }
+        .summary-value { font-size: 22px; font-weight: 700; color: #fff; }
+
+        /* INFO HEADER */
+        .info-header {
+            background: #1c2128;
+            border: 1px solid #2c3e50;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .info-title { font-size: 16px; font-weight: 700; color: #fff; }
+        .info-meta { font-size: 12px; color: #7d8590; margin-top: 2px; }
+
+        /* TABLE */
+        .table-container {
+            background: #1c2128;
+            border: 1px solid #2c3e50;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .table-header {
+            background: #161b22;
+            padding: 14px 20px;
+            border-bottom: 1px solid #2c3e50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .table-title { font-size: 14px; font-weight: 600; color: #e7e9ea; }
+        .table-count { font-size: 12px; color: #7d8590; }
+
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            background: #161b22;
+            color: #7d8590;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #2c3e50;
+        }
+        tbody tr { border-bottom: 1px solid #21262d; transition: background 0.15s; }
+        tbody tr:hover { background: #1c2128; }
+        tbody td {
+            padding: 12px 16px;
+            font-size: 13px;
+            color: #e7e9ea;
+        }
+        .col-no { width: 50px; text-align: center; color: #7d8590; }
+        .col-tanggal { width: 100px; }
+        .col-faktur { width: 160px; font-family: 'Courier New', monospace; font-size: 12px; color: #27ae60; }
+        .col-supplier { width: 180px; }
+        .col-masuk { width: 100px; text-align: right; }
+        .col-keluar { width: 100px; text-align: right; }
+        .col-sisa { width: 100px; text-align: right; font-weight: 600; }
+        .masuk-val { color: #27ae60; }
+        .keluar-val { color: #e74c3c; }
+
+        .badge-masuk {
+            display: inline-block;
+            background: rgba(39, 174, 96, 0.15);
+            color: #27ae60;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-keluar {
+            display: inline-block;
+            background: rgba(231, 76, 60, 0.15);
+            color: #e74c3c;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* FOOTER */
+        .table-footer {
+            padding: 14px 20px;
+            border-top: 1px solid #2c3e50;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .summary-totals {
+            display: flex;
+            gap: 32px;
+            font-size: 13px;
+            color: #7d8590;
+        }
+        .summary-totals span { color: #e7e9ea; font-weight: 600; }
+
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #7d8590;
+        }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+        .empty-title { font-size: 16px; font-weight: 600; color: #484f58; margin-bottom: 8px; }
+        .empty-desc { font-size: 13px; }
+
+        /* LOADING */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #7d8590;
+            gap: 10px;
+        }
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid #2c3e50;
+            border-top-color: #27ae60;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* PRINT */
+        @media print {
+            body { background: #fff; color: #000; }
+            .header, .filter-bar, .btn-cetak, .table-footer { display: none; }
+            .main-content { padding: 0; max-width: 100%; }
+            .summary-card, .info-header, .table-container { border-color: #ccc; background: #fff; }
+            .summary-value, tbody td { color: #000; }
+            thead th { background: #eee; color: #000; }
+            tbody tr { border-color: #ccc; }
+            .col-faktur { color: #000; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="header-left">
+        <div class="logo-icon">📦</div>
+        <div class="header-title">
+            <h1>Kartu Stock</h1>
+            <p>STOCK GUDANG UTAMA — Monitoring Per Item</p>
+        </div>
+    </div>
+    <button class="btn-home" onclick="window.location.href='/'">← Menu Utama</button>
+</div>
+
+<!-- MAIN -->
+<div class="main-content">
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+        <div class="filter-group">
+            <span class="filter-label">Nama Barang</span>
+            <select id="filterBarang" class="filter-select" onchange="loadKartuStock()">
+                <option value="">— Pilih Barang —</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Bulan</span>
+            <select id="filterBulan" class="filter-select" onchange="loadKartuStock()">
+                <option value="01">Januari</option>
+                <option value="02">Februari</option>
+                <option value="03">Maret</option>
+                <option value="04">April</option>
+                <option value="05" selected>Mei</option>
+                <option value="06">Juni</option>
+                <option value="07">Juli</option>
+                <option value="08">Agustus</option>
+                <option value="09">September</option>
+                <option value="10">Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Tahun</span>
+            <select id="filterTahun" class="filter-select" onchange="loadKartuStock()">
+            </select>
+        </div>
+        <button class="btn-cetak" onclick="window.print()">🖨️ Cetak</button>
+    </div>
+
+    <!-- INFO HEADER -->
+    <div class="info-header" id="infoHeader" style="display:none;">
+        <div>
+            <div class="info-title" id="infoTitle">—</div>
+            <div class="info-meta" id="infoMeta">Periode: —</div>
+        </div>
+        <div style="text-align:right;">
+            <div class="info-meta">Supplier: <strong id="infoSupplier">—</strong></div>
+            <div class="info-meta">Kategori: <strong id="infoKategori">—</strong></div>
+        </div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="summary-row" id="summaryRow" style="display:none;">
+        <div class="summary-card awal">
+            <div class="summary-label">Saldo Awal</div>
+            <div class="summary-value" id="valAwal">0</div>
+        </div>
+        <div class="summary-card masuk">
+            <div class="summary-label">Total Masuk</div>
+            <div class="summary-value" id="valMasuk">0</div>
+        </div>
+        <div class="summary-card keluar">
+            <div class="summary-label">Total Keluar</div>
+            <div class="summary-value" id="valKeluar">0</div>
+        </div>
+        <div class="summary-card akhir">
+            <div class="summary-label">Saldo Akhir</div>
+            <div class="summary-value" id="valAkhir">0</div>
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-container" id="tableContainer">
+        <div class="table-header">
+            <span class="table-title">📋 Riwayat Transaksi</span>
+            <span class="table-count" id="rowCount"></span>
+        </div>
+        <div id="tableContent">
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <div class="empty-title">Pilih barang dulu</div>
+                <div class="empty-desc">Pilih barang dan periode untuk melihat kartu stock</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+
+// Initialize tahun dropdown
+function initTahun() {
+    const tahunSelect = document.getElementById('filterTahun');
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear + 1; y >= currentYear - 5; y--) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        if (y === currentYear) opt.selected = true;
+        tahunSelect.appendChild(opt);
+    }
+}
+
+// Load barang dropdown
+async function loadBarang() {
+    try {
+        const res = await fetch(API + '/items');
+        const items = await res.json();
+        const select = document.getElementById('filterBarang');
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = `[${item.kategori || '-'}] ${item.nama}`;
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Gagal load barang:', e);
+    }
+}
+
+// Load kartu stock
+async function loadKartuStock() {
+    const itemId = document.getElementById('filterBarang').value;
+    const bulan = document.getElementById('filterBulan').value;
+    const tahun = document.getElementById('filterTahun').value;
+
+    if (!itemId) {
+        document.getElementById('infoHeader').style.display = 'none';
+        document.getElementById('summaryRow').style.display = 'none';
+        document.getElementById('tableContent').innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <div class="empty-title">Pilih barang dulu</div>
+                <div class="empty-desc">Pilih barang dan periode untuk melihat kartu stock</div>
+            </div>`;
+        return;
+    }
+
+    // Show loading
+    document.getElementById('tableContent').innerHTML = `<div class="loading"><div class="spinner"></div>Memuat...</div>`;
+
+    const periode = `${tahun}-${bulan}`;
+
+    try {
+        // Fetch item info + movements in parallel
+        const [itemRes, movementsRes] = await Promise.all([
+            fetch(API + '/items/' + itemId),
+            fetch(API + '/movements?item_id=' + itemId)
+        ]);
+
+        const item = await itemRes.json();
+        const allMovements = await movementsRes.json();
+
+        // Filter movements by bulan+tahun
+        const movements = allMovements.filter(m => m.tanggal && m.tanggal.startsWith(periode));
+
+        // Hitung AWAL: stok item saat ini MINUS total masuk + total keluar di periode ini
+        // Atau: cari saldo sebelum periode ini
+        const currentStok = parseInt(item.stok) || 0;
+        const totalMasukPeriode = movements.filter(m => m.type === 'MASUK').reduce((s, m) => s + parseInt(m.jumlah || 0), 0);
+        const totalKeluarPeriode = movements.filter(m => m.type === 'KELUAR').reduce((s, m) => s + parseInt(m.jumlah || 0), 0);
+        const saldoAwal = currentStok - totalMasukPeriode + totalKeluarPeriode;
+
+        // Update info header
+        document.getElementById('infoHeader').style.display = 'flex';
+        document.getElementById('infoTitle').textContent = item.nama;
+        document.getElementById('infoMeta').textContent = `Periode: ${getNamaBulan(bulan)} ${tahun}`;
+        document.getElementById('infoSupplier').textContent = item.supplier || '-';
+        document.getElementById('infoKategori').textContent = item.kategori || '-';
+
+        // Update summary cards
+        document.getElementById('summaryRow').style.display = 'grid';
+        document.getElementById('valAwal').textContent = saldoAwal;
+        document.getElementById('valMasuk').textContent = totalMasukPeriode;
+        document.getElementById('valKeluar').textContent = totalKeluarPeriode;
+        document.getElementById('valAkhir').textContent = currentStok;
+
+        // Sort movements by tanggal ASC for running balance
+        const sorted = [...movements].sort((a, b) => {
+            if (a.tanggal < b.tanggal) return -1;
+            if (a.tanggal > b.tanggal) return 1;
+            return 0;
+        });
+
+        // Build table
+        if (sorted.length === 0) {
+            document.getElementById('tableContent').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <div class="empty-title">Tidak ada transaksi</div>
+                    <div class="empty-desc">Tidak ada movement untuk ${getNamaBulan(bulan)} ${tahun}</div>
+                </div>`;
+            document.getElementById('rowCount').textContent = '0 transaksi';
+            return;
+        }
+
+        let runningBalance = saldoAwal;
+        let rows = '';
+        sorted.forEach((m, i) => {
+            const masuk = m.type === 'MASUK' ? parseInt(m.jumlah) : 0;
+            const keluar = m.type === 'KELUAR' ? parseInt(m.jumlah) : 0;
+            runningBalance += masuk;
+            runningBalance -= keluar;
+
+            const dt = new Date(m.tanggal);
+            const tglStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+
+            rows += `
+            <tr>
+                <td class="col-no">${i+1}</td>
+                <td class="col-tanggal">${tglStr}</td>
+                <td class="col-faktur">${m.catatan || '-'}</td>
+                <td class="col-supplier">${item.supplier || '-'}</td>
+                <td class="col-masuk masuk-val">${masuk > 0 ? '+' + masuk : '-'}</td>
+                <td class="col-keluar keluar-val">${keluar > 0 ? '-' + keluar : '-'}</td>
+                <td class="col-sisa">${runningBalance}</td>
+            </tr>`;
+        });
+
+        document.getElementById('rowCount').textContent = `${sorted.length} transaksi`;
+        document.getElementById('tableContent').innerHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-no">No</th>
+                        <th>Tanggal</th>
+                        <th>No Faktur</th>
+                        <th>Supplier</th>
+                        <th style="text-align:right;">Masuk</th>
+                        <th style="text-align:right;">Keluar</th>
+                        <th style="text-align:right;">Sisa</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <div class="table-footer">
+                <div class="summary-totals">
+                    <span>Masuk: <span id="footMasuk">${totalMasukPeriode}</span></span>
+                    <span>Keluar: <span id="footKeluar">${totalKeluarPeriode}</span></span>
+                    <span>Sisa: <span id="footAkhir">${currentStok}</span></span>
+                </div>
+            </div>`;
+
+    } catch (e) {
+        console.error(e);
+        document.getElementById('tableContent').innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <div class="empty-title">Gagal memuat data</div>
+                <div class="empty-desc">${e.message}</div>
+            </div>`;
+    }
+}
+
+function getNamaBulan(n) {
+    const nama = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return nama[parseInt(n)] || n;
+}
+
+// Init
+initTahun();
+loadBarang();
+</script>
+
+</body>
+</html>
