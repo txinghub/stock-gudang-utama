@@ -227,7 +227,7 @@
             <p>STOCK GUDANG UTAMA — All Items Summary</p>
         </div>
     </div>
-    <button class="btn-cetak" onclick="window.print()">🖨️ Cetak</button>
+    <button class="btn-cetak" type="button">🖨️ Cetak</button>
 </div>
 
 <!-- MAIN -->
@@ -418,8 +418,14 @@ async function loadLaporan() {
 }
 
 // Init
-initTahun();
-loadLaporan();
+document.addEventListener('DOMContentLoaded', function() {
+    initTahun();
+    loadLaporan();
+    document.querySelector('.btn-cetak').addEventListener('click', function(e) {
+        e.preventDefault();
+        window.print();
+    });
+});
 </script>
 
 </body>
