@@ -753,6 +753,8 @@ body {
               <div class="settings-item" onclick="openReport('masuk')"><span class="icon">📥</span> Barang Masuk</div>
               <div class="settings-item" onclick="openReport('keluar')"><span class="icon">📤</span> Barang Keluar</div>
               <div class="settings-item" onclick="openReport('gabungan')"><span class="icon">📋</span> Laporan Gabungan</div>
+              <div class="settings-item" onclick="window.open('kartu-stok-viewer.html','_blank')"><span class="icon">📦</span> Kartu Stock</div>
+              <div class="settings-item" onclick="window.open('laporan-bulanan.html','_blank')"><span class="icon">📊</span> Laporan Bulanan</div>
             </div>
           </div>
           <div class="accordion-group" id="accUser">
@@ -1111,17 +1113,6 @@ body {
     </div>
     <div id="reportSummary" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap"></div>
     <div id="reportContent" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"></div>
-  </div>
-</div>
-
-<!-- ===== STOCK CARD MODAL ===== -->
-<div class="modal-overlay" id="stockCardModal">
-  <div class="modal" style="max-width:650px;max-height:90vh;overflow-y:auto">
-    <div class="modal-header">
-      <div class="modal-title" id="stockCardTitle">📋 KARTU STOCK</div>
-      <button class="modal-close" onclick="closeStockCard()">×</button>
-    </div>
-    <div id="stockCardContent"></div>
   </div>
 </div>
 
@@ -2068,125 +2059,12 @@ function openDetail(id) {
     <div class="detail-actions">
       <button class="btn btn-primary" onclick="openEditItem(${item.id})" ${!can('item_edit')?'disabled title="Tidak ada izin"':''}>✏️ EDIT</button>
       <button class="btn btn-danger" onclick="openDeleteItem(${item.id})" ${!can('item_delete')?'disabled title="Tidak ada izin"':''}>🗑️</button>
-      <button class="btn btn-ghost" onclick="openStockCard(${item.id})" style="background:var(--primary-dim);color:var(--primary)">📋 KARTU STOCK</button>
     </div>
   `;
   document.getElementById('detailModal').classList.add('show');
 }
 
 function closeDetailModal() { document.getElementById('detailModal').classList.remove('show'); }
-
-async function openStockCard(itemId) {
-  const item = items.find(i => i.id === itemId);
-  if (!item) return;
-
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = today.getMonth(); // 0-based
-
-  // Calculate previous month for "AWAL"
-  const prevMonth = m === 0 ? 11 : m - 1;
-  const prevYear = m === 0 ? y - 1 : y;
-  const prevMonthStr = String(prevMonth + 1).padStart(2, '0');
-  const bulanNama = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI','JULI','AGUSTUS','SEPTEMBER','OKTOBER','NOVEMBER','DESEMBER'];
-
-  // Fetch all movements for this item
-  let movimentos = [];
-  try {
-    const res = await fetch(API_BASE + '/movements?item_id=' + itemId);
-    movimentos = await res.json();
-  } catch(e) { movimentos = []; }
-
-  // Build month-by-month rows
-  let rows = '';
-  let runningTotal = 0;
-
-  // Iterate months from Jan 2026 to current month
-  const startMonth = 1; // January 2026
-  const currentMonthIdx = y * 12 + m;
-  const startIdx = 2026 * 12 + startMonth - 1;
-
-  for (let idx = startIdx; idx <= currentMonthIdx; idx++) {
-    const thn = Math.floor(idx / 12);
-    const bln = (idx % 12) + 1;
-    const blnStr = String(bln).padStart(2, '0');
-    const bulanLabel = `${bulanNama[bln-1]} ${thn}`;
-
-    // Sum movements for this month
-    const monthMovs = movimentos.filter(mov => {
-      if (!mov.tanggal) return false;
-      const d = mov.tanggal.split(' ')[0]; // "2026-05-17"
-      return d >= `${thn}-${blnStr}-01` && d <= `${thn}-${blnStr}-31`;
-    });
-
-    const masuk = monthMovs.filter(m => m.type === 'MASUK').reduce((s, m) => s + (m.jumlah || 0), 0);
-    const keluar = monthMovs.filter(m => m.type === 'KELUAR').reduce((s, m) => s + (m.jumlah || 0), 0);
-    const akhir = runningTotal + masuk - keluar;
-
-    const bg = idx === currentMonthIdx ? 'background:var(--primary-dim)' : '';
-    rows += `<tr style="${bg}">
-      <td style="padding:5px 8px;font-size:10px">${bulanLabel}</td>
-      <td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">${runningTotal}</td>
-      <td style="padding:5px 8px;font-size:11px;text-align:right;color:var(--success)">${masuk ? '+'+masuk : '-'}</td>
-      <td style="padding:5px 8px;font-size:11px;text-align:right;color:var(--danger)">${keluar ? '-'+keluar : '-'}</td>
-      <td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700">${akhir}</td>
-    </tr>`;
-
-    runningTotal = akhir;
-  }
-
-  const html = `
-  <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:11px">
-      <div style="background:var(--surface);padding:10px;border-radius:8px;text-align:center">
-        <div style="font-size:9px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">STOK SAAT INI</div>
-        <div style="font-size:20px;font-weight:800;color:var(--primary)">${item.stok||0}</div>
-        <div style="font-size:10px;color:var(--text-muted)">${item.satuan||''}</div>
-      </div>
-      <div style="background:var(--surface);padding:10px;border-radius:8px;text-align:center">
-        <div style="font-size:9px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">AWAL BULAN INI</div>
-        <div style="font-size:20px;font-weight:800;color:var(--text)">${runningTotal - (movimentos.filter(m => {
-          const d = m.tanggal ? m.tanggal.split(' ')[0] : '';
-          const ym = `${y}-${String(m+1).padStart(2,'0')}`;
-          return d.startsWith(ym) && m.type === 'MASUK';
-        }).reduce((s,m)=>s+m.jumlah,0) || 0) + (movimentos.filter(m => {
-          const d = m.tanggal ? m.tanggal.split(' ')[0] : '';
-          const ym = `${y}-${String(m+1).padStart(2,'0')}`;
-          return d.startsWith(ym) && m.type === 'KELUAR';
-        }).reduce((s,m)=>s+m.jumlah,0) || 0))}</div>
-        <div style="font-size:10px;color:var(--text-muted)">${item.satuan||''}</div>
-      </div>
-      <div style="background:var(--surface);padding:10px;border-radius:8px;text-align:center">
-        <div style="font-size:9px;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">SATUAN</div>
-        <div style="font-size:16px;font-weight:700;color:var(--accent)">${item.satuan||'—'}</div>
-      </div>
-    </div>
-    <div style="font-size:9px;letter-spacing:1px;color:var(--text-muted)">KARTU STOCK — ${item.nama||'—'}</div>
-    <table style="width:100%;border-collapse:collapse;font-size:11px">
-      <thead>
-        <tr style="background:var(--surface-active)">
-          <th style="padding:6px 8px;text-align:left;font-size:9px;letter-spacing:1px;color:var(--text-muted)">PERIODE</th>
-          <th style="padding:6px 8px;text-align:right;font-size:9px;letter-spacing:1px;color:var(--text-muted)">AWAL</th>
-          <th style="padding:6px 8px;text-align:right;font-size:9px;letter-spacing:1px;color:var(--text-muted)">MASUK</th>
-          <th style="padding:6px 8px;text-align:right;font-size:9px;letter-spacing:1px;color:var(--text-muted)">KELUAR</th>
-          <th style="padding:6px 8px;text-align:right;font-size:9px;letter-spacing:1px;color:var(--text-muted)">AKHIR</th>
-        </tr>
-      </thead>
-      <tbody style="color:var(--text)">${rows}</tbody>
-    </table>
-    <div style="display:flex;justify-content:flex-end;gap:8px">
-      <button class="btn btn-ghost" onclick="closeStockCard()">TUTUP</button>
-    </div>
-  </div>`;
-
-  document.getElementById('stockCardTitle').textContent = `📋 KARTU STOCK — ${item.nama||'—'}`;
-  document.getElementById('stockCardContent').innerHTML = html;
-  document.getElementById('stockCardModal').classList.add('show');
-}
-
-function closeStockCard() {
-  document.getElementById('stockCardModal').classList.remove('show');
-}
 
 function openDeleteItem(id) {
   closeDetailModal(); // close detail first before showing delete modal
