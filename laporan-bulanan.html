@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Stock Bulanan - Stock Gudang Utama</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', 'Arial', monospace;
+            background: #0f1419;
+            color: #e7e9ea;
+            min-height: 100vh;
+            font-size: 12px;
+        }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #1a6b3a 0%, #14522d 100%);
+            border-bottom: 1px solid #2c3e50;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+        }
+        .header-title h1 { font-size: 16px; font-weight: 700; color: #fff; }
+        .header-title p { font-size: 10px; color: #a8d4b8; }
+
+        /* MAIN */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* FILTER BAR */
+        .filter-bar {
+            background: #1c2128;
+            border: 1px solid #2c3e50;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 4px; }
+        .filter-label { font-size: 10px; color: #7d8590; text-transform: uppercase; letter-spacing: 0.5px; }
+        .filter-select {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e7e9ea;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            outline: none;
+        }
+        .filter-select:focus { border-color: #27ae60; }
+        .btn-cetak {
+            background: linear-gradient(135deg, #27ae60, #1e8449);
+            border: none;
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        .btn-cetak:hover { opacity: 0.85; }
+
+        /* REPORT CONTAINER */
+        .report-container {
+            background: #fff;
+            color: #000;
+            border: 1px solid #2c3e50;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        /* REPORT HEADER (PRINT) */
+        .report-header {
+            padding: 20px 24px;
+            border-bottom: 2px solid #000;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .report-title {
+            text-align: center;
+            flex: 1;
+        }
+        .report-title h2 {
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }
+        .report-title h1 {
+            font-size: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 4px;
+        }
+        .report-title p {
+            font-size: 11px;
+            color: #555;
+        }
+        .report-meta {
+            text-align: right;
+            font-size: 11px;
+            color: #444;
+            line-height: 1.6;
+        }
+        .report-meta strong { font-size: 12px; }
+
+        /* TABLE */
+        .table-wrapper { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+        }
+        thead tr {
+            background: #2c3e50;
+            color: #fff;
+        }
+        thead th {
+            padding: 10px 8px;
+            text-align: center;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            border: 1px solid #1a252f;
+        }
+        thead th.left { text-align: left; }
+        tbody tr:nth-child(even) { background: #f5f5f5; }
+        tbody tr:nth-child(odd) { background: #fff; }
+        tbody td {
+            padding: 8px 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+            vertical-align: middle;
+        }
+        tbody td.left { text-align: left; }
+        tbody td.number { text-align: right; }
+        .col-no { width: 40px; }
+        .col-nama { text-align: left; min-width: 200px; }
+        .col-sat { width: 60px; }
+        .col-awal { width: 70px; }
+        .col-masuk { width: 70px; }
+        .col-keluar { width: 70px; }
+        .col-akhir { width: 70px; background: #e8f5e9; font-weight: 700; }
+
+        /* TOTALS ROW */
+        tbody tr.total-row {
+            background: #2c3e50 !important;
+            color: #fff;
+            font-weight: 700;
+        }
+        tbody tr.total-row td { border-color: #1a252f; }
+
+        /* SUMMARY BOX */
+        .summary-bar {
+            background: #1c2128;
+            border: 1px solid #2c3e50;
+            border-radius: 10px;
+            padding: 14px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 24px;
+            font-size: 12px;
+        }
+        .summary-item { color: #7d8590; }
+        .summary-item span { color: #fff; font-weight: 700; margin-left: 4px; }
+
+        /* LOADING */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7d8590;
+        }
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid #2c3e50;
+            border-top-color: #27ae60;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* PAGE BREAK */
+        @media print {
+            body { background: #fff; color: #000; font-size: 10px; }
+            .header, .filter-bar, .summary-bar, .btn-cetak { display: none; }
+            .main-content { padding: 0; max-width: 100%; }
+            .report-container { border: none; border-radius: 0; }
+            .report-header { padding: 16px 20px; }
+            table { font-size: 10px; }
+            thead th, tbody td { padding: 6px 5px; }
+            @page { size: A4 landscape; margin: 10mm; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="header-left">
+        <div class="logo-icon">📊</div>
+        <div class="header-title">
+            <h1>Laporan Stock Bulanan</h1>
+            <p>STOCK GUDANG UTAMA — All Items Summary</p>
+        </div>
+    </div>
+    <button class="btn-cetak" onclick="window.print()">🖨️ Cetak</button>
+</div>
+
+<!-- MAIN -->
+<div class="main-content">
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+        <div class="filter-group">
+            <span class="filter-label">Bulan</span>
+            <select id="filterBulan" class="filter-select" onchange="loadLaporan()">
+                <option value="01">Januari</option>
+                <option value="02">Februari</option>
+                <option value="03">Maret</option>
+                <option value="04">April</option>
+                <option value="05" selected>Mei</option>
+                <option value="06">Juni</option>
+                <option value="07">Juli</option>
+                <option value="08">Agustus</option>
+                <option value="09">September</option>
+                <option value="10">Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Tahun</span>
+            <select id="filterTahun" class="filter-select" onchange="loadLaporan()">
+            </select>
+        </div>
+    </div>
+
+    <!-- SUMMARY BAR -->
+    <div class="summary-bar" id="summaryBar" style="display:none;">
+        <div class="summary-item">Total Item: <span id="sumTotal">0</span></div>
+        <div class="summary-item">Total Masuk: <span id="sumMasuk">0</span></div>
+        <div class="summary-item">Total Keluar: <span id="sumKeluar">0</span></div>
+    </div>
+
+    <!-- REPORT CONTAINER -->
+    <div class="report-container" id="reportContainer">
+        <div class="report-header" id="reportHeader" style="display:none;">
+            <div class="report-title">
+                <h2>LAPORAN STOCK BULANAN</h2>
+                <h1 id="rptTitle">MEI 2026</h1>
+                <p>STOCK GUDANG UTAMA — PT SINAR ANGLO</p>
+            </div>
+            <div class="report-meta">
+                <div><strong>Tanggal Cetak:</strong> <span id="rptTglCetak">-</span></div>
+                <div><strong>Periode:</strong> <span id="rptPeriode">-</span></div>
+            </div>
+        </div>
+        <div id="reportContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <div>Memuat laporan...</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+
+// Init tahun dropdown
+function initTahun() {
+    const sel = document.getElementById('filterTahun');
+    const y = new Date().getFullYear();
+    for (let i = y + 1; i >= y - 5; i--) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = i;
+        if (i === y) opt.selected = true;
+        sel.appendChild(opt);
+    }
+}
+
+function getNamaBulan(n) {
+    const nama = ['', 'Januari','Februari','Maret','April','Mei','Juni',
+                  'Juli','Agustus','September','Oktober','November','Desember'];
+    return nama[parseInt(n)] || '';
+}
+
+function fmt(n) {
+    return parseInt(n || 0).toLocaleString('id-ID');
+}
+
+async function loadLaporan() {
+    const bulan = document.getElementById('filterBulan').value;
+    const tahun = document.getElementById('filterTahun').value;
+    const periode = `${tahun}-${bulan}`;
+    const namaBulan = `${getNamaBulan(bulan)} ${tahun}`;
+
+    document.getElementById('reportContent').innerHTML = '<div class="loading"><div class="spinner"></div><div>Memuat laporan...</div></div>';
+
+    try {
+        // Fetch all items + all movements
+        const [itemsRes, movRes] = await Promise.all([
+            fetch(API + '/items'),
+            fetch(API + '/movements')
+        ]);
+        const items = await itemsRes.json();
+        const allMov = await movRes.json();
+
+        // Build movement index per item per month
+        const movMap = {};
+        allMov.forEach(m => {
+            if (!m.tanggal || m.tanggal.slice(0,7) !== periode) return;
+            if (!movMap[m.item_id]) movMap[m.item_id] = { masuk: 0, keluar: 0 };
+            if (m.type === 'MASUK') movMap[m.item_id].masuk += parseInt(m.jumlah || 0);
+            if (m.type === 'KELUAR') movMap[m.item_id].keluar += parseInt(m.jumlah || 0);
+        });
+
+        // Build rows
+        let grandMasuk = 0, grandKeluar = 0, grandAwal = 0, grandAkhir = 0;
+        let rows = '';
+        items.forEach((item, i) => {
+            const mv = movMap[item.id] || { masuk: 0, keluar: 0 };
+            const stok = parseInt(item.stok) || 0;
+            const masuk = mv.masuk;
+            const keluar = mv.keluar;
+            const awal = stok - masuk + keluar;
+            const akhir = stok;
+
+            grandMasuk += masuk;
+            grandKeluar += keluar;
+            grandAwal += awal;
+            grandAkhir += akhir;
+
+            rows += `<tr>
+                <td class="col-no">${i+1}</td>
+                <td class="col-nama left">${item.nama || '-'}</td>
+                <td>${item.satuan || '-'}</td>
+                <td class="number">${fmt(awal)}</td>
+                <td class="number">${fmt(masuk)}</td>
+                <td class="number">${fmt(keluar)}</td>
+                <td class="col-akhir number">${fmt(akhir)}</td>
+            </tr>`;
+        });
+
+        // Summary row
+        rows += `<tr class="total-row">
+            <td colspan="3" style="text-align:right; font-weight:700;">TOTAL</td>
+            <td class="number">${fmt(grandAwal)}</td>
+            <td class="number">${fmt(grandMasuk)}</td>
+            <td class="number">${fmt(grandKeluar)}</td>
+            <td class="number">${fmt(grandAkhir)}</td>
+        </tr>`;
+
+        // Render header
+        document.getElementById('reportHeader').style.display = 'flex';
+        document.getElementById('rptTitle').textContent = namaBulan.toUpperCase();
+        document.getElementById('rptPeriode').textContent = namaBulan;
+
+        const now = new Date();
+        document.getElementById('rptTglCetak').textContent =
+            `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} - ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+        // Render table
+        document.getElementById('reportContent').innerHTML = `
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-no">NO</th>
+                            <th class="col-nama left">NAMA BARANG</th>
+                            <th class="col-sat">SAT</th>
+                            <th class="col-awal">AWAL</th>
+                            <th class="col-masuk">MASUK</th>
+                            <th class="col-keluar">KELUAR</th>
+                            <th class="col-akhir">AKHIR</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+
+        // Summary bar
+        document.getElementById('summaryBar').style.display = 'flex';
+        document.getElementById('sumTotal').textContent = items.length;
+        document.getElementById('sumMasuk').textContent = fmt(grandMasuk);
+        document.getElementById('sumKeluar').textContent = fmt(grandKeluar);
+
+    } catch(e) {
+        document.getElementById('reportContent').innerHTML = `<div class="loading" style="color:#e74c3c;">Gagal memuat: ${e.message}</div>`;
+    }
+}
+
+// Init
+initTahun();
+loadLaporan();
+</script>
+
+</body>
+</html>
